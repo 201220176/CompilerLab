@@ -1,5 +1,6 @@
 #include "tree.h"
 #include "syntax.tab.h"
+#include"semantic.h"
 extern FILE* yyin;
 //extern int yylex();
 extern int errorState;
@@ -41,8 +42,12 @@ int main(int argc, char** argv)
 	yydebug = 1;
 	yyparse();
 	if(!errorState)
-		PrintTree(root,0);
-
+	{
+		//PrintTree(root,0);
+		tableInit();
+        Program(root);
+		printTable();
+	}
 
 	return 0;
 }

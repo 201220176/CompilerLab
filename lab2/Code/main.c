@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 		//PrintTree(root,0);
 		tableInit();
         Program(root);
-		printTable();
+		//printTable();
 	}
 
 	return 0;

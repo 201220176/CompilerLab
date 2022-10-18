@@ -4,7 +4,7 @@
 
 #define HASHSIZE    0x3fff
 enum {
-    Type1,Type2,Type3,Type4,Type5,
+    Type0,Type1,Type2,Type3,Type4,Type5,
     Type6,Type7,Type8,Type9,Type10,
     Type11,Type12,Type13,Type14,Type15,
     Type16,Type17,Type18,Type19
@@ -23,6 +23,8 @@ typedef struct Type{
         struct FieldList* structure;
         struct { struct Type* ret; struct FieldList* para; } function;
     } u;
+    //判断是否是变量，还是说是结构体的名字。
+    int is_var;
 }Type;
 
 typedef struct FieldList {
@@ -47,8 +49,9 @@ void printTable();
 Type* getType(const char * name);
 void insert(hashNode* node);
 hashNode* search(const char * name);
-hashNode* newSymbol(char* name, Type* type, int line, int defined);
-void addSymbol(char* name, Type* type, int line, int defined);
+hashNode* newSymbol(const char* name, Type* type, int line, int defined);
+void addSymbol(const char* name, Type* type, int line, int defined);
+int isDoInStructure(const char* domain,Type*structure);
 void Program(treeNode* node);
 void ExtDefList(treeNode* node);
 void ExtDef(treeNode* node);
@@ -64,10 +67,10 @@ FieldList* VarList(treeNode* node, Type* headType);
 FieldList* ParamDec(treeNode* node, Type* headType);
 void ExtDecList(treeNode* node, Type* type);
 Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* res);
-void DefList(treeNode* node, Type* headType,int defined);
-void Def(treeNode* node, int defined);
-void DecList(treeNode *node, Type* type,  int defined);
-void Dec(treeNode *node, Type* type,  int defined) ;
+FieldList*DefList(treeNode* node, Type* headType,int defined);
+FieldList* Def(treeNode* node,Type * headType, int defined);
+FieldList*DecList(treeNode *node, Type* type,Type * headType,  int defined);
+FieldList* Dec(treeNode *node, Type* type, Type* headType, int defined) ;
 int BeSameType(Type* Ltype,Type*Rtype);
 int checkOperator(Type* Ltype,Type*Rtype,const char* operator);
 void serror(int errorType,int line,char* msg);

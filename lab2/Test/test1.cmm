@@ -1,10 +1,5 @@
-int a;
-int b,c;
-int main(int d,float e)
-{
-}
-
-int function(int f,int g)
-{
-    int h = main(5,6.1);
-}
+ int main()
+ {
+ int i = 0;
+ j = i + 1;
+ }

@@ -57,13 +57,14 @@ hashNode* search(const char * name)
     return head;
 }
 
-hashNode* newSymbol(char* name, Type* type, int line, int defined)
+hashNode* newSymbol(const char* name, Type* type, int line, int defined)
 {
     hashNode* temp = (hashNode*)malloc(sizeof(hashNode));
-    temp->name = name;
+    temp->name=name;
     temp->type = type;
     temp->line = line;
     temp->defined = defined;
+        
     if(temp->type->kind==BASIC)
     {
         temp->size=32;
@@ -96,11 +97,73 @@ hashNode* newSymbol(char* name, Type* type, int line, int defined)
     return temp;
 }
 
-void addSymbol(char* name, Type* type, int line, int defined)
+void addSymbol(const char* name, Type* type, int line, int defined)
 {
     if(!type)
         return;    
-    insert(newSymbol(name, type, line, defined));
+    int index =hash_pjw(name);
+    //第一次出现该符号
+    if(hashTable[index]==NULL)
+        insert(newSymbol(name, type, line, defined));
+    else
+    {
+        //找出与该符号名字相同的节点，判断声明、定义等等情况
+        hashNode*cur=hashTable[index];
+        while(cur)
+        {
+            if(!strcmp(cur->name,name))
+                break;
+            cur = cur->next;
+        }
+        //第一次出现该符号
+        if(cur==NULL)
+             insert(newSymbol(name, type, line, defined));
+        else
+        {
+            //重复定义
+            if(cur->defined==1&&defined==1)
+            {
+                
+                if(type->kind==BASIC||type->kind==ARRAY||(type->kind==STRUCTURE&&type->is_var==1))
+                     serror(Type3,line,"Redefined variable");
+                else if(type->kind==FUNCTION)
+                    serror(Type4,line,"Redefined function");
+                else if(type->kind==STRUCTURE&&type->is_var==0)
+                    serror(Type16,line,"Redefined structure");
+                    
+            }
+            //检查新的声明是否符合
+            else if(cur->defined==1&&defined==0)
+            {
+                printf("10\n");
+            }
+            //检查新的定义与旧的声明是否相符合
+            else if(cur->defined==0&&defined==1)
+            {
+                printf("01\n");
+            }
+            //检查老旧声明是否相符合
+            else if(cur->defined==0&&defined==0)
+            {
+                printf("00\n");
+            }
+
+        }
+    }
+}
+
+int isDoInStructure(const char* domain,Type*structure)
+{
+    if(!structure)
+        return 0;
+    FieldList *cur = structure->u.structure;
+    while(cur)
+    {
+        if(!strcmp(domain,cur->name))
+            return 1;
+        cur=cur->tail;
+    }
+    return 0;
 }
 
 void Program(treeNode* node)
@@ -175,7 +238,8 @@ void StmtList(treeNode* node, Type* ret)
              return ;
 		if(node->child) 
 		{
-			if(!strcmp("Stmt",node->child->name)) //StmtList -> Stmt StmtList
+            //StmtList -> Stmt StmtList
+			if(!strcmp("Stmt",node->child->name)) 
 			{
 				Stmt(node->child, ret);
 				StmtList(node->child->bro, ret);
@@ -195,6 +259,7 @@ void Stmt(treeNode* node, Type* ret)
             //Stmt -> Exp SEMI
 			if(!strcmp("Exp",node->child->name ))
 			{
+
 				Exp(node->child);
 			}
             //Stmt -> CompSt
@@ -206,20 +271,18 @@ void Stmt(treeNode* node, Type* ret)
 			else if(!strcmp( "RETURN",node->child->name)) 
 			{
 				Type* type = Exp(node->child->bro);
-                /*
-				if(!sameType(type, ret))
+				if(!BeSameType(type, ret))
 				{
-					serror("Type mismatched for return", node->child->bro->line, 8);
+					serror(Type8,node->child->bro->line,"Type mismatched for return");
 				}
-                */
 			}
-//Stmt -> IF LP Exp RP Stmt | IF LP Exp RP Stmt ELSE Stmt | WHILE LP Exp RP Stmt
+            //Stmt -> IF LP Exp RP Stmt | IF LP Exp RP Stmt ELSE Stmt | WHILE LP Exp RP Stmt
 			else if(!strcmp("IF",node->child->name) || !strcmp("WHILE",node->child->name )) 
 			{
 				Exp(node->child->bro->bro);
 				Stmt(node->child->bro->bro->bro->bro, ret);
                 //Stmt ->IF LP Exp RP Stmt ELSE Stmt 
-				if(node->child->bro->bro->bro->bro->bro)  
+				if(node->child->bro->bro->bro->bro->bro!=NULL)  
 				{
 					Stmt(node->child->bro->bro->bro->bro->bro->bro, ret);
 				}
@@ -231,10 +294,11 @@ Type* Exp(treeNode* node)
 {
     if (node==NULL)
             return NULL;
-    Type* type = (Type*)malloc(sizeof(Type));
+    Type* type = NULL;
     //Exp->INT
      if(!strcmp("INT",node->child->name))
         {
+            type =(Type*)malloc(sizeof(Type));
             type->kind = BASIC;
             type->u.basic = 0;
             return type;
@@ -242,6 +306,7 @@ Type* Exp(treeNode* node)
     //Exp->FLOAT
     else if(!strcmp("FLOAT",node->child->name))
         {
+            type =(Type*)malloc(sizeof(Type));
             type->kind = BASIC;
             type->u.basic = 1;
             return type;
@@ -254,7 +319,26 @@ Type* Exp(treeNode* node)
             //Exp -> Exp ASSIGNOP Exp
             if(!strcmp("ASSIGNOP",node->child->bro->name))
             {
-
+                //检查第一个Exp是否为左值
+                int isLvalue = 0;
+                treeNode* E1 = node->child;
+                //E1->ID 
+                if(E1->child&&!strcmp("ID",E1->child->name)&&!E1->child->bro)
+                    isLvalue=1;
+                else if(E1->child&&!strcmp("Exp",E1->child->name))
+                {
+                    // E1->Exp LB Exp RB E1->Exp DOT ID
+                    if(E1->child->bro&&!strcmp("LB",E1->child->bro->name))
+                        isLvalue=1;
+                    else if(E1->child->bro&&!strcmp("DOT",E1->child->bro->name))
+                        isLvalue=1;
+                }
+                if(!isLvalue)
+                    serror(Type6,E1->line,"The left-hand side of an assignment must be a variable");
+                Type *type2 = Exp(node->child->bro->bro);
+                if(!BeSameType(type1,type2))
+                    serror(Type5,E1->line,"The mismatched for assignment");
+                return type1;
             }
             //Exp -> Exp LB Exp RB
             else if(!strcmp("LB",node->child->bro->name))
@@ -270,7 +354,25 @@ Type* Exp(treeNode* node)
             //Exp -> Exp DOT ID
             else if(!strcmp("DOT",node->child->bro->name))
             {
-
+                Type *type1 = Exp(node->child);
+                //不是结构体，或者只是名字。
+                if(type1&&(type1->kind!=STRUCTURE||type1->is_var==0))
+                {
+                    serror(Type13,node->child->line,"use '.' on a non-structure");
+                    return NULL;
+                }
+                //查看ID是否在结构体中
+                else if(type1&&type1->kind==STRUCTURE&&!isDoInStructure(node->child->bro->s_val,type1))
+                {
+                    serror(Type14,node->child->line,"use an undefined domain in a structure");
+                    return NULL;
+                }
+                //语句合法
+                else if(type1&&type1->kind==STRUCTURE&&isDoInStructure(node->child->bro->s_val,type1))
+                {
+                    type = getType(node->child->bro->s_val);
+                    return type;
+                }
             }
             //Exp -> Exp AND/OR/RELOP/PLUS/MINUS/STAR/DIV EXP
             else
@@ -333,7 +435,7 @@ Type* Exp(treeNode* node)
 
 void Args(treeNode* node, Type* type)
 {
-    if(node==NULL)
+    if(node==NULL||type==NULL)
         return;
     if(type->kind!=FUNCTION)
         return;
@@ -393,34 +495,45 @@ Type* StructSpecifier(treeNode* node)
 {
     if (node==NULL)
             return NULL;
-    Type* type = (Type*)malloc(sizeof(Type));
-    type->kind = STRUCTURE;
-    type->u.structure = NULL;
+    Type* type = NULL;
     //StructSpecifier -> STRUCT OptTag LC DefList RC
     if(!strcmp("OptTag",node->child->bro->name ))
     {
+        type = (Type*)malloc(sizeof(Type));
+        type->kind = STRUCTURE;
+        type->u.structure = NULL;
             char* name;
             //OptTag -> ID
             if(node->child->bro->child)    
-                name = node->child->bro->child->s_val;
-            DefList(node->child->bro->bro->bro, type,0);
-            addSymbol(name, type, node->line, 1);
+                {
+                    FieldList *domain =NULL;
+                    name = node->child->bro->child->s_val;
+                    domain = DefList(node->child->bro->bro->bro, type,0);
+                    type->u.structure=domain;
+                    addSymbol(name, type, node->line, 1);
+                }
+            else
+                {
+                    DefList(node->child->bro->bro->bro, type,0);
+                }
             return type;
     }
     //StructSpecifier -> STRUCT LC DefList RC
     else if(!strcmp("LC",node->child->bro->name ))
     {
-        return NULL;
+        type = (Type*)malloc(sizeof(Type));
+        type->kind = STRUCTURE;
+        type->u.structure = NULL;
+        DefList(node->child->bro->bro, type,0);
+        return type;
     }
     //StructSpecifier ->STRUCT Tag
     else
     {
-        /*
             type= getType(node->child->bro->child->s_val);
             if(type == NULL)
-                serror(stradd("Undefined structure: ", node->child->bro->child->s_val), node->child->bro->line, 17);
+                serror(Type17,node->child->bro->line,"Undefined structure");
             return type;
-            */
     }
     
 }
@@ -487,11 +600,6 @@ FieldList* ParamDec(treeNode* node, Type* headType)
         return temp;
 }
 
-/*
-Type FindStructureFiled(Type type, char * name, int line)
-bool isRightValuesOnly(treeNode* node)
-*/
-
 void ExtDecList(treeNode* node, Type* type)
 {
     if (node==NULL)
@@ -510,24 +618,28 @@ void ExtDecList(treeNode* node, Type* type)
 }
 
 //name[INT][INT]，返回name的类型
-Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* ret)
+Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* paralist)
 {
     if (node==NULL)
         return NULL;
 
-    if(headType==NULL||headType->kind==FUNCTION)
+    if(headType==NULL||headType->kind==FUNCTION||headType->kind==STRUCTURE)
     {
         //VarDec -> ID
         if(!strcmp("ID",node->child->name))
         {
-            if(ret)
+            Type* temp = (Type*)malloc(sizeof(Type));   
+            temp->kind=type->kind;
+            temp->u=type->u;
+            temp->is_var=1;
+            if(paralist)
             {
-            ret->name=node->child->name;
-            ret->type=type;
-            ret->tail=NULL;
+            paralist->name=node->child->name;
+            paralist->type=temp;
+            paralist->tail=NULL;
             }
-            addSymbol(node->child->s_val, type, node->child->line, defined);
-            return type;
+            addSymbol(node->child->s_val, temp, node->child->line, defined);
+            return temp;
         }
         //VarDec -> VarDec LP INT RP
         else  
@@ -536,7 +648,7 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* r
             temp->kind = ARRAY;
             temp->u.array.elem = type;   
             temp->u.array.size = node->child->bro->bro->i_val;
-            return VarDec(node->child, temp, headType,defined,ret);
+            return VarDec(node->child, temp, headType,defined,paralist);
         }
     }
     else if(headType->kind==STRUCTURE)
@@ -545,77 +657,82 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* r
     }
 }
 
-void DefList(treeNode* node, Type* headType,int defined)
+FieldList* DefList(treeNode* node, Type* headType,int defined)
 {
     if (node==NULL)
-        return;
+        return NULL;
      // DefList-> Def DefList    
     if(node->child)
     {
-        Def(node->child, defined);
-        DefList(node->child->bro, headType,defined);
+        FieldList* paralist =Def(node->child, headType,defined);
+        paralist->tail = DefList(node->child->bro, headType,defined);
     }
     // DefList-> empty
     else
     {
-        
+        return NULL;
     }
 }
 
-void Def(treeNode* node, int defined)
+FieldList* Def(treeNode* node, Type * headType,int defined)
 {
     if (node==NULL)
-        return;
+        return NULL;
     //Def -> Specifier DecList SEMI
     if(node->child)
     {
         Type* type = Specifier(node->child);
         if(type == NULL) 
-            return;
-        DecList(node->child->bro, type, defined);
+            return NULL;
+        return DecList(node->child->bro, type, headType,defined);
     }
 }
 
-void DecList(treeNode *node, Type* type,  int defined)
+FieldList* DecList(treeNode *node, Type* type, Type*headType, int defined)
  {
     if (node==NULL)
-        return;
-    //StructSpecifier -> STRUCT OptTag LC DefList RC
-    if(type&&type->kind==STRUCTURE)
-    {
-        return;
-    }
+        return NULL;
     //DecList -> Dec
     if(node->child->bro == NULL) 
     {
-        Dec(node->child, type, defined);
+        return Dec(node->child, type, headType,defined);
     }
     //DecList -> Dec COMMA DecList
     else   
     {
-        Dec(node->child, type, defined);
-        DecList(node->child->bro->bro, type, defined);
+        FieldList* paralist = Dec(node->child, type, headType,defined);
+        paralist ->tail = DecList(node->child->bro->bro, type,headType, defined);
+        return paralist;
     }
 }
 
-void Dec(treeNode *node, Type* type,  int defined) 
+FieldList* Dec(treeNode *node, Type* type,  Type* headType,int defined) 
 {
     if (node==NULL)
-        return;
+        return NULL;
     //Dec ->VarDec
     if(node->child->bro == NULL)
     {
-        VarDec(node->child, type, NULL,defined,NULL);
+        FieldList* paralist = (FieldList*)malloc(sizeof(FieldList));
+        VarDec(node->child, type, headType,defined,paralist);
+        return paralist;
     }
     //Dec -> VarDec ASSIGNOP Exp
     else   
     {
-        Type * L = VarDec(node->child, type, NULL,defined,NULL);
+        FieldList* paralist = (FieldList*)malloc(sizeof(FieldList));
+        Type * L = VarDec(node->child, type, headType,defined,paralist);
         Type * R = Exp(node->child->bro->bro);
+        if (headType&&headType->kind==STRUCTURE)
+        {
+            serror(Type15,node->child->line,"Initial in structure");
+        }
+        
         if(!checkOperator(L,R,"ASSIGNOP"))
         {
             serror(Type5,node->child->line,"Type mismatched for assignment");
         }
+        return paralist;
     }
 }
 

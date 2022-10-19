@@ -211,7 +211,7 @@ void ExtDef(treeNode* node)
     // Specifier SEMI
     else
     {
-
+        Specifier(node->child);
     }
 }
 
@@ -622,6 +622,8 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
 {
     if (node==NULL)
         return NULL;
+    if(type==NULL)
+        return NULL;
 
     if(headType==NULL||headType->kind==FUNCTION||headType->kind==STRUCTURE)
     {
@@ -634,11 +636,29 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
             temp->is_var=1;
             if(paralist)
             {
-            paralist->name=node->child->name;
-            paralist->type=temp;
-            paralist->tail=NULL;
+                paralist->name=node->child->s_val;
+                paralist->type=temp;
+                paralist->tail=NULL;
+                //检查结构体域内变量
+                if(headType&&headType->kind==STRUCTURE)
+                {
+                    if(headType->u.structure==NULL)
+                        headType->u.structure=paralist;
+                    else
+                    {
+                        FieldList *head=headType->u.structure;
+                        while(head)
+                        {
+                            if(!strcmp(head->name,paralist->name))
+                                serror(Type15,node->child->line,"Redefined var in structure");
+                            head=head->tail;
+                        }
+                        headType->u.structure->tail=paralist;
+                    }
+                }
             }
-            addSymbol(node->child->s_val, temp, node->child->line, defined);
+            if(!headType)
+                addSymbol(node->child->s_val, temp, node->child->line, defined);
             return temp;
         }
         //VarDec -> VarDec LP INT RP
@@ -665,7 +685,11 @@ FieldList* DefList(treeNode* node, Type* headType,int defined)
     if(node->child)
     {
         FieldList* paralist =Def(node->child, headType,defined);
-        paralist->tail = DefList(node->child->bro, headType,defined);
+        if(paralist==NULL)
+            paralist=DefList(node->child->bro, headType,defined);
+        else
+            paralist->tail = DefList(node->child->bro, headType,defined);
+        return paralist;
     }
     // DefList-> empty
     else

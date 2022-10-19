@@ -235,7 +235,7 @@ void ExtDef(treeNode* node)
         if(!strcmp("CompSt",node->child->bro->bro->name))
             {
                 FunDec(node->child->bro,type,1);
-                CompSt(node->child->bro->bro,type,1);
+                CompSt(node->child->bro->bro,type,1,1);
             }
         //Specifier FunDec SEMI
         else
@@ -248,24 +248,24 @@ void ExtDef(treeNode* node)
     }
 }
 
-void CompSt(treeNode* node, Type* ret, int defined) 
+void CompSt(treeNode* node, Type* ret, int defined,int depth) 
 {	 
     if (node==NULL)
              return ;
         //CompSt -> LC DefList StmtList RC
 		if(!strcmp("DefList",node->child->bro->name)) 
 		{
-			DefList(node->child->bro,NULL, defined);
+			DefList(node->child->bro,NULL, defined,depth);
 			if(!strcmp("StmtList",node->child->bro->bro->name))
-				StmtList(node->child->bro->bro, ret);
+				StmtList(node->child->bro->bro, ret,depth);
 		}
         //CompSt -> LC StmtList RC
 		else if(!strcmp("StmtList",node->child->bro->name))
-				StmtList(node->child->bro, ret);
+				StmtList(node->child->bro, ret,depth);
 		
 }
 
-void StmtList(treeNode* node, Type* ret)
+void StmtList(treeNode* node, Type* ret,int depth)
 {
     if (node==NULL)
              return ;
@@ -274,8 +274,8 @@ void StmtList(treeNode* node, Type* ret)
             //StmtList -> Stmt StmtList
 			if(!strcmp("Stmt",node->child->name)) 
 			{
-				Stmt(node->child, ret);
-				StmtList(node->child->bro, ret);
+				Stmt(node->child, ret,depth);
+				StmtList(node->child->bro, ret,depth);
 			}
 			else{
 			//StmtList -> empty
@@ -283,7 +283,7 @@ void StmtList(treeNode* node, Type* ret)
 		}
 }
 
-void Stmt(treeNode* node, Type* ret)
+void Stmt(treeNode* node, Type* ret,int depth)
 {
     if (node==NULL)
              return ;
@@ -298,7 +298,7 @@ void Stmt(treeNode* node, Type* ret)
             //Stmt -> CompSt
 			else if(!strcmp("CompSt",node->child->name )) 
 			{
-				CompSt(node->child, ret,1);
+				CompSt(node->child, ret,1,depth+1);
 			}
             //Stmt -> RETURN Exp SEMI
 			else if(!strcmp( "RETURN",node->child->name)) 
@@ -313,11 +313,11 @@ void Stmt(treeNode* node, Type* ret)
 			else if(!strcmp("IF",node->child->name) || !strcmp("WHILE",node->child->name )) 
 			{
 				Exp(node->child->bro->bro);
-				Stmt(node->child->bro->bro->bro->bro, ret);
+				Stmt(node->child->bro->bro->bro->bro, ret,depth);
                 //Stmt ->IF LP Exp RP Stmt ELSE Stmt 
 				if(node->child->bro->bro->bro->bro->bro!=NULL)  
 				{
-					Stmt(node->child->bro->bro->bro->bro->bro->bro, ret);
+					Stmt(node->child->bro->bro->bro->bro->bro->bro, ret,depth);
 				}
 			}
 		}
@@ -552,12 +552,12 @@ Type* StructSpecifier(treeNode* node)
             if(node->child->bro->child)    
                 {
                     name = node->child->bro->child->s_val;
-                    DefList(node->child->bro->bro->bro, type,0);
+                    DefList(node->child->bro->bro->bro, type,0,-1);
                     addSymbol(name, type, node->line, 1);
                 }
             else
                 {
-                    DefList(node->child->bro->bro->bro, type,0);
+                    DefList(node->child->bro->bro->bro, type,0,-1);
                 }
             return type;
     }
@@ -567,7 +567,7 @@ Type* StructSpecifier(treeNode* node)
         type = (Type*)malloc(sizeof(Type));
         type->kind = STRUCTURE;
         type->u.structure = NULL;
-        DefList(node->child->bro->bro, type,0);
+        DefList(node->child->bro->bro, type,0,-1);
         return type;
     }
     //StructSpecifier ->STRUCT Tag
@@ -598,6 +598,7 @@ void FunDec(treeNode* node, Type* ret, int defined)
         {
             type->u.function.para = NULL;
         }
+
         //定义函数，将所有参数也加入符号表
         if(defined)
         {
@@ -704,7 +705,10 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
                         headType->u.function.para=paralist;
                     else
                     {
-                        headType->u.function.para->tail=paralist;
+                        FieldList *tail = headType->u.function.para;
+                        while(tail&&tail->tail)
+                            tail=tail->tail; 
+                        tail->tail=paralist;
                     }
                 }
             }
@@ -728,7 +732,7 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
     }
 }
 
-void DefList(treeNode* node, Type* headType,int defined)
+void DefList(treeNode* node, Type* headType,int defined,int depth)
 {
     if (node==NULL)
         return ;
@@ -736,7 +740,7 @@ void DefList(treeNode* node, Type* headType,int defined)
     if(node->child)
     {
         Def(node->child, headType,defined);
-        DefList(node->child->bro, headType,defined);              
+        DefList(node->child->bro, headType,defined,depth);              
     }
     // DefList-> empty
     else

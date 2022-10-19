@@ -38,6 +38,16 @@ int main(int argc, char** argv)
 	printf("%s",buf);
 	rewind(f);
 */
+/*
+	while(fgets(temp,1024,f) != NULL)
+ 	{
+	
+ 	len = strlen(temp);
+	temp[len-1] = '\0';  	
+	printf("%s\n",temp);
+	}
+	rewind(f);
+*/
 	yyrestart(f);
 	yydebug = 1;
 	yyparse();
@@ -46,7 +56,7 @@ int main(int argc, char** argv)
 		//PrintTree(root,0);
 		tableInit();
         Program(root);
-		//printTable();
+		printTable();
 	}
 
 	return 0;

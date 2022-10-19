@@ -29,11 +29,25 @@ for (int i = 0; i < HASHSIZE + 1; ++i) {
 }
 }
 
-Type* getType(const char * name)
+Type* getTypeFromTable(const char * name)
 {
     hashNode* res=search(name);
     if(res)
         return res->type;
+    return NULL;
+}
+
+Type* getTypeFromStruct(const char * name,Type*structure)
+{
+    if(!structure)
+        return NULL;
+    FieldList *cur = structure->u.structure;
+    while(cur)
+    {
+        if(!strcmp(name,cur->name))
+            return cur->type;
+        cur=cur->tail;
+    }
     return NULL;
 }
 
@@ -130,22 +144,25 @@ void addSymbol(const char* name, Type* type, int line, int defined)
                     serror(Type4,line,"Redefined function");
                 else if(type->kind==STRUCTURE&&type->is_var==0)
                     serror(Type16,line,"Redefined structure");
-                    
             }
             //检查新的声明是否符合
             else if(cur->defined==1&&defined==0)
             {
-                printf("10\n");
+                 if(!checkDeclaration(cur->type,type))
+                    serror(Type19,line,"conflict of declaration");
             }
             //检查新的定义与旧的声明是否相符合
             else if(cur->defined==0&&defined==1)
             {
-                printf("01\n");
+                 if(!checkDeclaration(cur->type,type))
+                    serror(Type19,line,"conflict of declaration");
+                    cur->defined=1;
             }
             //检查老旧声明是否相符合
             else if(cur->defined==0&&defined==0)
             {
-                printf("00\n");
+                    if(!checkDeclaration(cur->type,type))
+                        serror(Type19,line,"conflict of declaration");
             }
 
         }
@@ -166,6 +183,21 @@ int isDoInStructure(const char* domain,Type*structure)
     return 0;
 }
 
+//检查是否所有声明的函数是否定义
+void checkDeclarationAndDefine()
+{
+    for(int i =0;i<HASHSIZE;++i)
+    {
+        hashNode* Node = hashTable[i];
+        if(!Node)
+            continue;
+        if(Node->type->kind==FUNCTION&&Node->defined==0)
+        {
+            serror(Type18,Node->line,"Undefined Function");
+        }
+    }
+}
+
 void Program(treeNode* node)
 {
     if (node==NULL)
@@ -175,6 +207,7 @@ void Program(treeNode* node)
     {
         ExtDefList(node->child);
     }
+    checkDeclarationAndDefine();
 }
 
 void ExtDefList(treeNode* node)
@@ -362,15 +395,15 @@ Type* Exp(treeNode* node)
                     return NULL;
                 }
                 //查看ID是否在结构体中
-                else if(type1&&type1->kind==STRUCTURE&&!isDoInStructure(node->child->bro->s_val,type1))
+                else if(type1&&type1->kind==STRUCTURE&&!isDoInStructure(node->child->bro->bro->s_val,type1))
                 {
                     serror(Type14,node->child->line,"use an undefined domain in a structure");
                     return NULL;
                 }
                 //语句合法
-                else if(type1&&type1->kind==STRUCTURE&&isDoInStructure(node->child->bro->s_val,type1))
+                else if(type1&&type1->kind==STRUCTURE&&isDoInStructure(node->child->bro->bro->s_val,type1))
                 {
-                    type = getType(node->child->bro->s_val);
+                    type = getTypeFromStruct(node->child->bro->bro->s_val,type1);
                     return type;
                 }
             }
@@ -404,7 +437,7 @@ Type* Exp(treeNode* node)
                 //EXP-> ID
                 if(node->child->bro==NULL)
                 {
-                    type = getType(node->child->s_val);
+                    type = getTypeFromTable(node->child->s_val);
                     if(type == NULL)
                         serror(Type1,node->child->line,"Undefined variable");
                     return type;
@@ -412,7 +445,7 @@ Type* Exp(treeNode* node)
                 //EXP-> ID LP RP | ID LP Args RP
                 else
                 {
-                    type = getType(node->child->s_val);
+                    type = getTypeFromTable(node->child->s_val);
                     Type* res = NULL;
                     int argflag=0;          //是否需要args
                     if(type == NULL)
@@ -530,7 +563,7 @@ Type* StructSpecifier(treeNode* node)
     //StructSpecifier ->STRUCT Tag
     else
     {
-            type= getType(node->child->bro->child->s_val);
+            type= getTypeFromTable(node->child->bro->child->s_val);
             if(type == NULL)
                 serror(Type17,node->child->bro->line,"Undefined structure");
             return type;
@@ -688,7 +721,15 @@ FieldList* DefList(treeNode* node, Type* headType,int defined)
         if(paralist==NULL)
             paralist=DefList(node->child->bro, headType,defined);
         else
-            paralist->tail = DefList(node->child->bro, headType,defined);
+        {
+            FieldList*cur = paralist;
+            while(cur->tail)
+            {
+                cur=cur->tail;
+            }
+            cur->tail = DefList(node->child->bro, headType,defined);              
+        }
+  
         return paralist;
     }
     // DefList-> empty
@@ -708,7 +749,8 @@ FieldList* Def(treeNode* node, Type * headType,int defined)
         Type* type = Specifier(node->child);
         if(type == NULL) 
             return NULL;
-        return DecList(node->child->bro, type, headType,defined);
+        FieldList * res=DecList(node->child->bro, type, headType,defined);
+        return  res;
     }
 }
 
@@ -760,7 +802,7 @@ FieldList* Dec(treeNode *node, Type* type,  Type* headType,int defined)
     }
 }
 
-//检查是否是相同类型
+//检查之是否是相同类型
 int BeSameType(Type* Ltype,Type*Rtype)
 {    
     if(Ltype==NULL||Rtype==NULL)
@@ -792,10 +834,41 @@ int BeSameType(Type* Ltype,Type*Rtype)
     }
     if(Ltype->kind==STRUCTURE)
     {
-
+        FieldList *p1=Ltype->u.structure,*p2=Rtype->u.structure;
+        while(p1&&p2)
+        {
+            if(!BeSameType(p1->type,p2->type))
+                return 0;
+            p1=p1->tail;
+            p2=p2->tail;
+        }
+        if(p1||p2)
+            return 0;
+        return 1;
     }
-
 }
+
+//检查两个函数类型是否一致
+int checkDeclaration(Type* Ltype,Type*Rtype)
+{
+    if(!Ltype||!Rtype)
+        return 0;
+    //检查返回值
+    if(!BeSameType(Ltype,Rtype))
+        return 0;
+    //检查参数
+    FieldList*p1=Ltype->u.function.para,*p2=Rtype->u.function.para;
+    while(p1&&p1)
+    {
+        if(!BeSameType(p1->type,p2->type))
+            return 0;
+            p1=p1->tail;
+            p2=p2->tail;
+    }
+    if(p1||p2)
+        return 0;
+    return 1;
+    }
 
 int checkOperator(Type* Ltype,Type*Rtype,const char* operator)
 {

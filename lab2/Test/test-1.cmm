@@ -1,0 +1,16 @@
+struct Data {
+  int di, dj;
+  int diarr[10];
+};
+
+
+int is_equal(struct Data ed1, struct Data ed2) {
+  int idx = 0;
+  if (ed1.di != ed2.di 
+      || ed1.dj != ed2.dj
+)
+ {
+    return 0;
+  }
+}
+

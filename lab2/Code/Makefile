@@ -33,7 +33,7 @@ scanner: lexical
 # 定义的一些伪目标
 .PHONY: clean test phase1
 test:
-	./parser ../Test/test15.cmm
+	./parser ../Test/test-1.cmm
 
 alltest:
 	./parser ../Test/test1.cmm

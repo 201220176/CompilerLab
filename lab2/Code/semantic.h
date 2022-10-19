@@ -39,7 +39,8 @@ typedef struct hashNode{
     int line;
     int defined;
     int size;
-    struct hashNode* next;
+    struct hashNode* next;  //opening hashing
+    struct hashNode* under;//下一个同层的Hashnode
 }hashNode;
 
 
@@ -65,14 +66,14 @@ void Args(treeNode* root, Type* type);
 Type* Specifier(treeNode* node);
 Type* StructSpecifier(treeNode* node);
 void FunDec(treeNode* node, Type* ret, int defined);
-FieldList* VarList(treeNode* node, Type* headType);
-FieldList* ParamDec(treeNode* node, Type* headType);
+void VarList(treeNode* node, Type* headType);
+void ParamDec(treeNode* node, Type* headType);
 void ExtDecList(treeNode* node, Type* type);
 Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* res);
-FieldList*DefList(treeNode* node, Type* headType,int defined);
-FieldList* Def(treeNode* node,Type * headType, int defined);
-FieldList*DecList(treeNode *node, Type* type,Type * headType,  int defined);
-FieldList* Dec(treeNode *node, Type* type, Type* headType, int defined) ;
+void DefList(treeNode* node, Type* headType,int defined);
+void Def(treeNode* node,Type * headType, int defined);
+void DecList(treeNode *node, Type* type,Type * headType,  int defined);
+void Dec(treeNode *node, Type* type, Type* headType, int defined) ;
 int BeSameType(Type* Ltype,Type*Rtype);
 int checkDeclaration(Type* Ltype,Type*Rtype);
 int checkOperator(Type* Ltype,Type*Rtype,const char* operator);

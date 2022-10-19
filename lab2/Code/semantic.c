@@ -408,12 +408,24 @@ Type* Exp(treeNode* node)
                 }
             }
             //Exp -> Exp AND/OR/RELOP/PLUS/MINUS/STAR/DIV EXP
-            else
+            else 
             {
                 Type* type2 = Exp(node->child->bro->bro);
                 if(!checkOperator(type1,type2,node->child->bro->name))
+                {
                       serror(Type7,node->child->line,"Type mismatched for operands");
-                else type = type1;
+                }
+                else 
+                {
+                    if(!strcmp("RELOP",node->child->bro->name)||!strcmp("AND",node->child->bro->name)||!strcmp("OR",node->child->bro->name))
+                        {
+                            type=(Type*)malloc(sizeof(Type));
+                            type->kind=BASIC;
+                            type->u.basic=0;
+                        }
+                    else
+                        type = type1;
+                }
                 return type;
             }
         }
@@ -539,10 +551,8 @@ Type* StructSpecifier(treeNode* node)
             //OptTag -> ID
             if(node->child->bro->child)    
                 {
-                    FieldList *domain =NULL;
                     name = node->child->bro->child->s_val;
-                    domain = DefList(node->child->bro->bro->bro, type,0);
-                    type->u.structure=domain;
+                    DefList(node->child->bro->bro->bro, type,0);
                     addSymbol(name, type, node->line, 1);
                 }
             else
@@ -581,7 +591,7 @@ void FunDec(treeNode* node, Type* ret, int defined)
         //FunDec -> ID LP VarList RP
         if(!strcmp( "VarList",node->child->bro->bro->name))   
         {
-            type->u.function.para = VarList(node->child->bro->bro, type);
+            VarList(node->child->bro->bro, type);
         }
         //FunDec -> ID LP RP
         else    
@@ -602,35 +612,31 @@ void FunDec(treeNode* node, Type* ret, int defined)
 }
 
 
-FieldList* VarList(treeNode* node, Type* headType)
+void  VarList(treeNode* node, Type* headType)
 {
         if (node==NULL)
-             return NULL;
-        FieldList* parahead; 
+             return;
         // VarList -> ParamDec COMMA VarList
         if(node->child->bro)  
         {
-            parahead = ParamDec(node->child, headType);
-            parahead->tail = VarList(node->child->bro->bro, headType);
+            ParamDec(node->child, headType);
+            VarList(node->child->bro->bro, headType);
         }
         //VarList -> ParamDec
         else    
         {
-            parahead = ParamDec(node->child, headType);
-            parahead->tail = NULL;
+            ParamDec(node->child, headType);
         }
-        return parahead;
 }
 
-FieldList* ParamDec(treeNode* node, Type* headType)
+void ParamDec(treeNode* node, Type* headType)
 {
         if (node==NULL)
-             return NULL;
+             return;
         FieldList* temp = (FieldList*)malloc(sizeof(FieldList));
         //Specifier VarDec
         Type* type = Specifier(node->child);
         VarDec(node->child->bro, type, headType,0,temp);
-        return temp;
 }
 
 void ExtDecList(treeNode* node, Type* type)
@@ -679,14 +685,26 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
                         headType->u.structure=paralist;
                     else
                     {
-                        FieldList *head=headType->u.structure;
+                        FieldList *head=headType->u.structure,*tail=head;
                         while(head)
                         {
                             if(!strcmp(head->name,paralist->name))
                                 serror(Type15,node->child->line,"Redefined var in structure");
                             head=head->tail;
+                            if(tail->tail)
+                                tail=tail->tail;
                         }
-                        headType->u.structure->tail=paralist;
+                        
+                        tail->tail=paralist;
+                    }
+                }
+                else if(headType&&headType->kind==FUNCTION)
+                {
+                    if(headType->u.function.para==NULL)
+                        headType->u.function.para=paralist;
+                    else
+                    {
+                        headType->u.function.para->tail=paralist;
                     }
                 }
             }
@@ -710,78 +728,63 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
     }
 }
 
-FieldList* DefList(treeNode* node, Type* headType,int defined)
+void DefList(treeNode* node, Type* headType,int defined)
 {
     if (node==NULL)
-        return NULL;
+        return ;
      // DefList-> Def DefList    
     if(node->child)
     {
-        FieldList* paralist =Def(node->child, headType,defined);
-        if(paralist==NULL)
-            paralist=DefList(node->child->bro, headType,defined);
-        else
-        {
-            FieldList*cur = paralist;
-            while(cur->tail)
-            {
-                cur=cur->tail;
-            }
-            cur->tail = DefList(node->child->bro, headType,defined);              
-        }
-  
-        return paralist;
+        Def(node->child, headType,defined);
+        DefList(node->child->bro, headType,defined);              
     }
     // DefList-> empty
     else
     {
-        return NULL;
+        return;
     }
 }
 
-FieldList* Def(treeNode* node, Type * headType,int defined)
+void Def(treeNode* node, Type * headType,int defined)
 {
     if (node==NULL)
-        return NULL;
+        return;
     //Def -> Specifier DecList SEMI
     if(node->child)
     {
         Type* type = Specifier(node->child);
         if(type == NULL) 
-            return NULL;
-        FieldList * res=DecList(node->child->bro, type, headType,defined);
-        return  res;
+            return ;
+        DecList(node->child->bro, type, headType,defined);
     }
 }
 
-FieldList* DecList(treeNode *node, Type* type, Type*headType, int defined)
+void DecList(treeNode *node, Type* type, Type*headType, int defined)
  {
     if (node==NULL)
-        return NULL;
+        return ;
     //DecList -> Dec
     if(node->child->bro == NULL) 
     {
-        return Dec(node->child, type, headType,defined);
+       Dec(node->child, type, headType,defined);
     }
     //DecList -> Dec COMMA DecList
     else   
     {
-        FieldList* paralist = Dec(node->child, type, headType,defined);
-        paralist ->tail = DecList(node->child->bro->bro, type,headType, defined);
-        return paralist;
+        Dec(node->child, type, headType,defined);
+        DecList(node->child->bro->bro, type,headType, defined);
     }
 }
 
-FieldList* Dec(treeNode *node, Type* type,  Type* headType,int defined) 
+void  Dec(treeNode *node, Type* type,  Type* headType,int defined) 
 {
     if (node==NULL)
-        return NULL;
+        return ;
     //Dec ->VarDec
     if(node->child->bro == NULL)
     {
         FieldList* paralist = (FieldList*)malloc(sizeof(FieldList));
         VarDec(node->child, type, headType,defined,paralist);
-        return paralist;
     }
     //Dec -> VarDec ASSIGNOP Exp
     else   
@@ -798,7 +801,6 @@ FieldList* Dec(treeNode *node, Type* type,  Type* headType,int defined)
         {
             serror(Type5,node->child->line,"Type mismatched for assignment");
         }
-        return paralist;
     }
 }
 
@@ -877,8 +879,9 @@ int checkOperator(Type* Ltype,Type*Rtype,const char* operator)
         if(!BeSameType(Ltype,Rtype))
             return 0;
     }
-    else if(!strcmp("AND",operator)||!strcmp("OR",operator)||!strcmp("RELOP",operator))
+    else if(!strcmp("AND",operator)||!strcmp("OR",operator))
     {
+
         if(!BeSameType(Ltype,Rtype))
             return 0;
         //只能为整数
@@ -887,7 +890,14 @@ int checkOperator(Type* Ltype,Type*Rtype,const char* operator)
         if(Ltype->u.basic!=0||Rtype->u.basic!=0)
             return 0;
     }
-        else if(!strcmp("PLUS",operator)||!strcmp("MINUS",operator)||!strcmp("STAR",operator)||!strcmp("DIV",operator))
+    else if(!strcmp("RELOP",operator))
+    {
+        if(!BeSameType(Ltype,Rtype))
+            return 0;
+        if(Ltype->kind!=BASIC||Rtype->kind!=BASIC)
+            return 0;
+    }
+    else if(!strcmp("PLUS",operator)||!strcmp("MINUS",operator)||!strcmp("STAR",operator)||!strcmp("DIV",operator))
     {
         if(!BeSameType(Ltype,Rtype))
             return 0;

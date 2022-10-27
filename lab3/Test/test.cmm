@@ -1,0 +1,25 @@
+struct Complex {
+  float real;
+  float imag;
+};
+
+struct Complex mat[10][10];
+
+int ridx;
+int cidx;
+int row;
+int col;
+
+int prepare_params() {
+  ridx = 0;
+  cidx = 0;
+  row  = 10;
+  col  = 10;
+  return 0;
+}
+
+struct Complex add(int a_c1, int a_c2) {
+}
+
+struct Complex add(int inc_c);
+

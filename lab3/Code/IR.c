@@ -1,11 +1,75 @@
 #include"IR.h"
 
+int varCount = 1, tempCount = 1, labelCount = 1;
+
+
+Operand* newLabel()
+{
+
+}
+
+Operand* newTemp()
+{
+
+}
+
+Operand *newConstant(int val)
+{
+    
+}
+
+void createSingle(int kind,Operand*op)
+{
+
+}
+
+void createCond(Operand* op1, Operand* op2, Operand* target, char* re)
+{
+
+}
+
+void createAssign( Operand* left, Operand* right)
+{
+
+}
+
+void createBinop(unsigned kind,  Operand* res, Operand* op1, Operand* op2)
+{
+
+}
+
+void createSinop(unsigned kind, Operand* res, Operand* op)
+{
+
+}
+
+
 void translate_init()
 {
 
 }
 
-void translate(treeNode *root)
+//为符号表中符号创建op,在semantic添加符号时调用。
+Operand* new_symbol_op(char*name,Type* type)
+{
+    if(type==NULL)
+        return NULL;
+    Operand* op = (Operand*) malloc(sizeof(Operand));
+    if(type->kind==BASIC)
+    {
+        op->kind = VARIABLE_O;
+        op->u.var_no = varCount++;
+        op->type = VAL_O;
+        return op;
+    }
+    if(type->kind==FUNCTION)
+    {
+        op->kind = FUNCTION_O;
+        op->u.func_name = name;
+    }
+}
+
+void Translate(treeNode *root)
 {
     if(root == NULL)
         return;
@@ -103,8 +167,7 @@ void translate_Stmt(treeNode* node)
             //Stmt -> Exp SEMI
 			if(!strcmp("Exp",node->child->name ))
 			{
-
-				translate_Exp(node->child);
+				translate_Exp(node->child,NULL);
 			}
             //Stmt -> CompSt
 			else if(!strcmp("CompSt",node->child->name )) 
@@ -114,193 +177,313 @@ void translate_Stmt(treeNode* node)
             //Stmt -> RETURN Exp SEMI
 			else if(!strcmp( "RETURN",node->child->name)) 
 			{
-
+                Operand* t1 = newTemp();
+                translate_Exp(node->child->bro, t1);
+                createSingle(RETURN_I, t1);
 			}
-            //Stmt -> IF LP Exp RP Stmt | IF LP Exp RP Stmt ELSE Stmt | WHILE LP Exp RP Stmt
-			else if(!strcmp("IF",node->child->name) || !strcmp("WHILE",node->child->name )) 
+            //Stmt -> IF LP Exp RP Stmt 
+            else if(!strcmp("IF",node->child->name)&&node->child->bro->bro->bro->bro->bro==NULL)
+            {
+                Operand* label1 = newLabel();
+                Operand* label2 = newLabel();
+                translate_Cond(node->child->bro->bro, label1, label2);
+                createSingle(LABEL_I, label1);
+                translate_Stmt(node->child->bro->bro->bro->bro);
+                createSingle(LABEL_I, label2);
+            }
+            //Stmt -> IF LP Exp RP Stmt ELSE Stmt 
+            else if(!strcmp("IF",node->child->name))
+            {
+                Operand* label1 = newLabel();
+                Operand* label2 = newLabel();
+                Operand* label3 = newLabel();
+                translate_Cond(node->child->bro->bro, label1, label2);
+                createSingle(LABEL_I, label1);
+                translate_Stmt(node->child->bro->bro->bro->bro);
+                createSingle(GOTO_I, label3);
+                createSingle(LABEL_I, label2);
+                translate_Stmt(node->child->bro->bro->bro->bro->bro->bro);
+                createSingle(LABEL_I, label3);
+            }
+            // WHILE LP Exp RP Stmt
+			else if(!strcmp("WHILE",node->child->name)) 
 			{
-				translate_Exp(node->child->bro->bro);
-				translate_Stmt(node->child->bro->bro->bro->bro);
-                //Stmt ->IF LP Exp RP Stmt ELSE Stmt 
-				if(node->child->bro->bro->bro->bro->bro!=NULL)  
-				{
-					translate_Stmt(node->child->bro->bro->bro->bro->bro->bro);
-				}
+                Operand* label1 = newLabel();
+                Operand* label2 = newLabel();
+                Operand* label3 = newLabel();
+                createSingle(LABEL_I, label1);
+                translate_Cond(node->child->bro->bro, label2, label3);
+                createSingle(LABEL_I, label2);
+                translate_Stmt(node->child->bro->bro->bro->bro);
+                createSingle(GOTO_I, label1);
+                createSingle(LABEL_I, label3);
 			}
 		}
 }
 
-Type* translate_Exp(treeNode* node)
+void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
+{
+    if(!node)
+        return;
+    // Exp AND Exp
+    if(node->child->bro&&strcmp("AND",node->child->bro->name))
+    {
+        Operand* label1 = newLabel();
+        translate_Cond(node->child, label1, label_false);
+        createSingle(LABEL_I, label1);
+        translate_Cond(node->child->bro->bro, label_true, label_false);
+    } 
+     // Exp OR Exp
+     else if(node->child->bro&&strcmp("OR",node->child->bro->name))
+    {
+        Operand* label1 = newLabel();
+        translate_Cond(node->child, label_true, label1);
+        createSingle(LABEL_I, label1);
+        translate_Cond(node->child->bro->bro, label_true, label_false);
+    } 
+    // Exp RELOP Exp
+    else if(node->child->bro&&strcmp("RELOP",node->child->bro->name))
+    {
+        Operand* t1 = newTemp(0);
+        Operand* t2 = newTemp(0);
+        translate_Exp(node->child, t1);
+        translate_Exp(node->child->bro->bro, t2);
+        createCond(t1, t2, label_true, node->child->bro->s_val);
+        createSingle(GOTO_I, label_false);
+    } 
+    // NOT Exp
+    else if(node->child&&strcmp("NOT",node->child->s_val))
+        translate_Cond(node->child->bro,label_false, label_true);
+    else {
+        Operand* t1 = newTemp();
+        translate_Exp(node, t1);
+        createCond(t1, newConstant(0), label_true, "!=");
+        createSingle(GOTO_I, label_false);
+    } 
+}
+
+void translate_Exp(treeNode* node,Operand* place)
 {
     if (node==NULL)
-            return NULL;
-    Type* type = NULL;
+            return ;
     //Exp->INT
      if(!strcmp("INT",node->child->name))
         {
-            type =(Type*)malloc(sizeof(Type));
-            type->kind = BASIC;
-            type->u.basic = 0;
-            return type;
+            if(place!=NULL)
+            {
+                Operand* op = (Operand*)malloc(sizeof(Operand));
+                op->kind = CONSTANT_O;
+                op->u.value = node->child->i_val;
+                createAssign(place, op);
+            }
         }
     //Exp->FLOAT
     else if(!strcmp("FLOAT",node->child->name))
         {
-            type =(Type*)malloc(sizeof(Type));
-            type->kind = BASIC;
-            type->u.basic = 1;
-            return type;
+            //不会出现
         }
     else if(!strcmp("Exp",node->child->name))
         {
-            Type* type1 =  translate_Exp(node->child);
-            if(type1==NULL)
-                return NULL;
             if(node->child->bro==NULL)
-                return NULL;
+                return ;
             //Exp -> Exp ASSIGNOP Exp
             if(!strcmp("ASSIGNOP",node->child->bro->name))
             {
-                //检查第一个Exp是否为左值
-                int isLvalue = 0;
                 treeNode* E1 = node->child;
+                treeNode* E2 = node->child->bro->bro;
                 //E1->ID 
                 if(E1->child&&!strcmp("ID",E1->child->name)&&!E1->child->bro)
-                    isLvalue=1;
+                {
+                    Operand* t1 = newTemp();
+                    translate_Exp(E1,t1);
+                    Operand* t2 = newTemp();
+                    translate_Exp(E2,t2);
+                    createAssign(t1 , t2);
+                    if (place) 
+                        createAssign( place, t1);
+                }
                 else if(E1->child&&!strcmp("Exp",E1->child->name))
                 {
-                    // E1->Exp LB Exp RB E1->Exp DOT ID
+                    // E1->Exp LB Exp RB 
                     if(E1->child->bro&&!strcmp("LB",E1->child->bro->name))
-                        isLvalue=1;
+                    {
+
+                    }
+                    //E1->Exp DOT ID
                     else if(E1->child->bro&&!strcmp("DOT",E1->child->bro->name))
-                        isLvalue=1;
+                    {
+                        
+                    }
                 }
-                if(!isLvalue)
-                    serror(Type6,E1->line,"The left-hand side of an assignment must be a variable");
-                Type *type2 =  translate_Exp(node->child->bro->bro);
-                if(!BeSameType(type1,type2))
-                    serror(Type5,E1->line,"The mismatched for assignment");
-                return type1;
             }
             //Exp -> Exp LB Exp RB
             else if(!strcmp("LB",node->child->bro->name))
             {
-                Type* para =  translate_Exp(node->child->bro->bro);
-                if(type1->kind!=ARRAY)
-                    serror(Type10,node->child->line,"wrong operation on non-array type");
-                else if(para->kind!=BASIC||para->u.basic!=0)
-                    serror(Type12,node->child->bro->bro->line,"a non-integer given to array");
-                else type=type1->u.array.elem;
-                return type;
+                //translate_Exp(node->child->bro->bro);
             }
             //Exp -> Exp DOT ID
             else if(!strcmp("DOT",node->child->bro->name))
             {
-                Type *type1 = Exp(node->child);
-                //不是结构体，或者只是名字。
-                if(type1&&(type1->kind!=STRUCTURE||type1->is_var==0))
-                {
-                    serror(Type13,node->child->line,"use '.' on a non-structure");
-                    return NULL;
-                }
-                //查看ID是否在结构体中
-                else if(type1&&type1->kind==STRUCTURE&&!isDoInStructure(node->child->bro->bro->s_val,type1))
-                {
-                    serror(Type14,node->child->line,"use an undefined domain in a structure");
-                    return NULL;
-                }
-                //语句合法
-                else if(type1&&type1->kind==STRUCTURE&&isDoInStructure(node->child->bro->bro->s_val,type1))
-                {
-                    type = getTypeFromStruct(node->child->bro->bro->s_val,type1);
-                    return type;
-                }
+                //translate_Exp(node->child);
             }
             //Exp -> Exp AND/OR/RELOP/PLUS/MINUS/STAR/DIV EXP
             else 
             {
-                Type* type2 =  translate_Exp(node->child->bro->bro);
-                if(!checkOperator(type1,type2,node->child->bro->name))
+                if(!strcmp("RELOP",node->child->bro->name)||!strcmp("AND",node->child->bro->name)||!strcmp("OR",node->child->bro->name))
                 {
-                      serror(Type7,node->child->line,"Type mismatched for operands");
-                }
-                else 
-                {
-                    if(!strcmp("RELOP",node->child->bro->name)||!strcmp("AND",node->child->bro->name)||!strcmp("OR",node->child->bro->name))
+                    Operand* label1 = newLabel();
+                    Operand* label2 = newLabel();
+                    if (place)
                         {
-                            type=(Type*)malloc(sizeof(Type));
-                            type->kind=BASIC;
-                            type->u.basic=0;
+                            createAssign(place, newConstant(0));
                         }
-                    else
-                        type = type1;
+                    translate_Cond(node, label1, label2);
+                    createSingle(LABEL_I, label1);
+                    if (place)
+                        {
+                            createAssign(place,newConstant(1));
+                        }
+                    createSingle(LABEL_I, label2);
                 }
-                return type;
+                else if(!strcmp("PLUS",node->child->bro->name)||!strcmp("MINUS",node->child->bro->name)||!strcmp("STAR",node->child->bro->name)||!strcmp("DIV",node->child->bro->name))
+                {
+                        treeNode* E1 = node->child;
+                        treeNode* E2 = node->child->bro->bro;
+                        Operand* t1 = newTemp();
+                        translate_Exp(E1,t1);
+                        Operand* t2 = newTemp();
+                        translate_Exp(E2,t2);
+                        if (place)
+                        {
+                            if(!strcmp("PLUS",node->child->bro->name))
+                                createBinop(ADD_I, place, t1, t2);
+                            if(!strcmp("MINUS",node->child->bro->name))
+                                createBinop(SUB_I, place, t1, t2);
+                            if(!strcmp("STAR",node->child->bro->name))
+                                createBinop(MUL_I, place, t1, t2);
+                            if(!strcmp("DIV",node->child->bro->name))
+                                createBinop(DIV_I, place, t1, t2);
+                        }
+                    }
             }
         }
-        //EXP-> LP Exp RP | MINUS EXP
-        else if(!strcmp("LP",node->child->name)||!strcmp("MINUS",node->child->name))
+    //EXP-> LP Exp RP | MINUS EXP
+    else if(!strcmp("LP",node->child->name)||!strcmp("MINUS",node->child->name))
+        {
+            if(!strcmp("LP",node->child->name))
+                translate_Exp(node->child->bro, place);
+            else if(!strcmp("MINUS",node->child->name))
             {
-                type= translate_Exp(node->child->bro);
-                return type;
-            } 
-        //EXP-> NOT EXP
-        else if(!strcmp("NOT",node->child->name))
-            {
-                type= translate_Exp(node->child->bro);
-                if(type->kind!=BASIC)
-                    serror(Type7,node->child->line,"Type mismatched for operands");
-                return type;
-            } 
-        //EXP-> ID | ID LP RP | ID LP Args RP
-        else if(!strcmp("ID",node->child->name))
+                Operand* t1 = newTemp();
+                translate_Exp(node->child->bro, t1);
+                if (place)
+                    createBinop(SUB_I, place, newConstant(0), t1);
+            }
+        } 
+    //EXP-> NOT EXP
+    else if(!strcmp("NOT",node->child->name))
+        {
+                Operand* label1 = newLabel();
+                Operand* label2 = newLabel();
+                if (place)
+                    {
+                        createAssign(place, newConstant(0));
+                    }
+                translate_Cond(node, label1, label2);
+                createSingle(LABEL_I, label1);
+                if (place)
+                    {
+                        createAssign(place,newConstant(1));
+                    }
+                createSingle(LABEL_I, label2);
+        } 
+    //EXP-> ID | ID LP RP | ID LP Args RP
+    else if(!strcmp("ID",node->child->name))
             {
                 //EXP-> ID
                 if(node->child->bro==NULL)
                 {
-                    type = getTypeFromTable(node->child->s_val);
-                    if(type == NULL)
-                        serror(Type1,node->child->line,"Undefined variable");
-                    return type;
+                    if (place) 
+                    {
+                        hashNode* symbol = search(node->child->s_val);
+                        createAssign(place, symbol->op);
+                    }
                 }
-                //EXP-> ID LP RP | ID LP Args RP
+            }
+    //ID LP Args RP
+    else if(!strcmp("Args",node->child->bro->bro->name))
+    {
+        hashNode* func = search(node->child->s_val);
+        int arg_count = func->type->u.function.argCount;
+        Operand * arg_list[arg_count];
+        translate_Args(node->child->bro->bro,arg_list,arg_count-1);
+        if (!strcmp(func->name, "write")) 
+        {
+            createSingle(WRITE_I, arg_list[0]);
+            if (place)
+                createAssign(place, newConstant(0));
+        } 
+        else {
+            for (int i = 0; i < arg_count; ++i) {
+                createSingle(ARG_I, arg_list[i]);
+            }
+            Operand* op = (Operand*)malloc(sizeof(Operand));
+            op->kind = FUNCTION_O;
+            op->u.func_name = func->name;
+            if (place)
+                createSinop(CALL_I, place, op);
+            else {
+                Operand* t1 = newTemp();
+                createSinop(CALL_I, t1, op);
+            }
+}
+    }
+    //EXP-> ID LP RP |
+    else
+            {
+                hashNode* func = search(node->child->s_val);
+                if(!strcmp(func->name,"READ_I"))
+                {
+                    if (place)
+                            createSingle(READ_I, place);
+                    else {
+                        Operand* t1 = newTemp();
+                        createSingle(READ_I, t1);
+                    }
+                }
                 else
                 {
-                    type = getTypeFromTable(node->child->s_val);
-                    Type* res = NULL;
-                    int argflag=0;          //是否需要args
-                    if(type == NULL)
-                        serror(Type2,node->child->line,"Undefined function");
-                    else if(type->kind!=FUNCTION)
-                        serror(Type11,node->child->line,"function operation on non-function");
-                    else
-                    {
-                        argflag=type->u.function.para==NULL?0:1;
-                        res = type->u.function.ret;
+                    Operand* op = (Operand*)malloc(sizeof(Operand));
+                    op->kind = FUNCTION_O;
+                    op->u.func_name = func->name;
+                    if (place)
+                        createSinop(CALL_I, place, op);
+                    else {
+                        Operand* t1 = newTemp();
+                        createSinop(CALL_I, t1, op);
                     }
-                    if(!strcmp("Args",node->child->bro->bro->name))
-                        translate_Args(node->child->bro->bro);
-                    else if(argflag==1)
-                         serror(Type9,node->child->line,"function need arguments");
-                    return res;
                 }
             }
 }
 
-void  translate_Args(treeNode* node)
+void  translate_Args(treeNode* node,Operand* arg_list[],int head)
 {
     if(node==NULL)
         return;
-    treeNode*cur = node;
-    while(cur->child)
+        // :Exp COMMA Args
+    if(node->child->bro!=NULL)
     {
-        Type* temp = translate_Exp(cur->child);
-        if(cur->child->bro)
-        {
-            cur = cur->child->bro->bro;
-        }
-        else
-            break;
+        Operand* t1= newTemp();
+        translate_Exp(node->child,t1);
+        arg_list[head]=t1;
+        translate_Args(node->child->bro->bro,arg_list,head--);
+    }
+    //:Exp
+    else
+    {
+        Operand* t1= newTemp();
+        translate_Exp(node->child,t1);
+        arg_list[head]=t1;
     }
 }
 
@@ -308,44 +491,48 @@ void translate_FunDec(treeNode* node)
 {
     if (node==NULL)
              return;
-        //FunDec -> ID LP VarList RP
-        if(!strcmp( "VarList",node->child->bro->bro->name))   
-        {
-            translate_VarList(node->child->bro->bro);
-        }
-        //FunDec -> ID LP RP
-        else    
-        {
+    Operand* func = (Operand*)malloc(sizeof(Operand));
+    func->kind = FUNCTION_O;
+    func->u.func_name = node->child->s_val;
+    createSingle(FUNCTION_I, func);
+    //FunDec -> ID LP VarList RP
+    if(!strcmp( "VarList",node->child->bro->bro->name))   
+    {
+        translate_VarList(node->child->bro->bro,1);
+    }
+    //FunDec -> ID LP RP
+    else    
+    {
 
-        }
+    }
 
 }
 
-
-void  translate_VarList(treeNode* node)
+//0为默认，1为函数参数，2为结构体域
+void  translate_VarList(treeNode* node,int headType)
 {
         if (node==NULL)
              return;
         // VarList -> ParamDec COMMA VarList
         if(node->child->bro)  
         {
-             translate_ParamDec(node->child);
-            translate_VarList(node->child->bro->bro);
+             translate_ParamDec(node->child,headType);
+            translate_VarList(node->child->bro->bro,headType);
         }
         //VarList -> ParamDec
         else    
         {
-            translate_ParamDec(node->child);
+            translate_ParamDec(node->child,headType);
         }
 }
 
-void translate_ParamDec(treeNode* node)
+void translate_ParamDec(treeNode* node,int headType)
 {
         if (node==NULL)
              return;
         FieldList* temp = (FieldList*)malloc(sizeof(FieldList));
         //Specifier VarDec
-        translate_VarDec(node->child->bro);
+        translate_VarDec(node->child->bro,headType);
 }
 
 void translate_ExtDecList(treeNode* node)
@@ -355,30 +542,41 @@ void translate_ExtDecList(treeNode* node)
     //ExtDecList -> VarDec COMMA ExtDecList
     if(node->child->bro!=NULL) 
     {
-        translate_VarDec(node->child); 
+        translate_VarDec(node->child,0); 
         translate_ExtDecList(node->child->bro->bro);
     }
     //ExtDecList -> VarDec
     else 
     { 
-        translate_VarDec(node->child);
+        translate_VarDec(node->child,0);
     }
 }
 
 //name[INT][INT]，返回name的类型
-Type* translate_VarDec(treeNode* node)
+void translate_VarDec(treeNode* node,int headType)
 {
     if (node==NULL)
-        return NULL;
+        return ;
         //VarDec -> ID
         if(!strcmp("ID",node->child->name))
         {
-            
+            //函数参数
+            if (headType==1) 
+            {
+                hashNode* sym = search(node->child->s_val);
+                sym->op->kind = PARAMETER_O;
+                createSingle(PARAM_I, sym->op);
+            }
+            //结构体
+            else if(headType==2)
+            {
+
+            }
         }
         //VarDec -> VarDec LP INT RP
         else  
         {	
-            return translate_VarDec(node->child);
+            translate_VarDec(node->child,headType);
         }
 }
 
@@ -434,13 +632,15 @@ void  translate_Dec(treeNode *node)
     //Dec ->VarDec
     if(node->child->bro == NULL)
     {
-        translate_VarDec(node->child);
+        translate_VarDec(node->child,0);
     }
     //Dec -> VarDec ASSIGNOP Exp
     else   
     {
-        FieldList* paralist = (FieldList*)malloc(sizeof(FieldList));
-        Type * L = translate_VarDec(node->child);
-        Type * R = translate_Exp(node->child->bro->bro);
+        translate_VarDec(node->child,0);
+        hashNode* res = search(node->child->child->s_val);
+        Operand* t1 = newTemp();
+        translate_Exp(node->child->bro->bro, t1);
+        createAssign(res->op, t1);
     }
 }

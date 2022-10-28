@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 		tableInit();
         Program(root);
 		printTable();
-		//Translate(root);
+		Translate(root);
 	}
 
 	return 0;

@@ -1,6 +1,11 @@
+#ifndef SEMANTIC_H 
+
+#define SEMANTIC_H
 #include"tree.h"
 #include <stdio.h>
 #include <string.h>
+
+typedef struct Operand_ Operand;
 
 #define HASHSIZE    0x3fff
 enum {
@@ -9,8 +14,6 @@ enum {
     Type11,Type12,Type13,Type14,Type15,
     Type16,Type17,Type18,Type19
 };
-
-
 
 typedef struct Type{
     enum { BASIC, ARRAY, STRUCTURE,FUNCTION} kind;
@@ -21,7 +24,7 @@ typedef struct Type{
         struct {struct Type* elem; int size; } array;
         //结构体类型信息是一个链表
         struct FieldList* structure;
-        struct { struct Type* ret; struct FieldList* para; } function;
+        struct { struct Type* ret; struct FieldList* para;int argCount; } function;
     } u;
     //判断是否是变量，还是说是结构体的名字。
     int is_var;
@@ -36,6 +39,7 @@ typedef struct FieldList {
 typedef struct hashNode{
     char* name;
     Type* type;
+    Operand * op;   //在表中存储其操作数。
     int line;
     int defined;
     int size;
@@ -83,3 +87,5 @@ int BeSameType(Type* Ltype,Type*Rtype);
 int checkDeclaration(Type* Ltype,Type*Rtype);
 int checkOperator(Type* Ltype,Type*Rtype,const char* operator);
 void serror(int errorType,int line,char* msg);
+
+#endif

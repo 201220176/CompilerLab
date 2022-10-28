@@ -1,9 +1,11 @@
 #include"semantic.h"
+#include"IR.h"
 
 //散列表
 hashNode* hashTable[HASHSIZE+1];
 //每层的符号的链表，如hashDepth[0]可以用来连接所有全局变量。
 hashNode* hashDepth[HASHSIZE+1];
+
 
 void tableInit()
 {
@@ -150,6 +152,7 @@ hashNode* newSymbol(const char* name, Type* type, int line, int defined,int dept
     temp->line = line;
     temp->depth=depth;
     temp->defined = defined;
+    temp->op = new_symbol_op(name,type);
         
     if(temp->type->kind==BASIC)
     {
@@ -682,6 +685,7 @@ void FunDec(treeNode* node, Type* ret, int defined)
         Type* type = (Type*)malloc(sizeof(Type));
         type->kind = FUNCTION;
         type->u.function.ret = ret;
+        type->u.function.argCount=0;
         //FunDec -> ID LP VarList RP
         if(!strcmp( "VarList",node->child->bro->bro->name))   
         {
@@ -699,6 +703,7 @@ void FunDec(treeNode* node, Type* ret, int defined)
             FieldList* para = type->u.function.para;
             while(para)
             {
+                type->u.function.argCount++;
                 addSymbol(para->name, para->type, node->child->line, 1,1);
                 para = para->tail;
             }

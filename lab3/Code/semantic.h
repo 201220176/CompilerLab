@@ -87,5 +87,6 @@ int BeSameType(Type* Ltype,Type*Rtype);
 int checkDeclaration(Type* Ltype,Type*Rtype);
 int checkOperator(Type* Ltype,Type*Rtype,const char* operator);
 void serror(int errorType,int line,char* msg);
+int getTypeSize(Type* typeElement);
 
 #endif

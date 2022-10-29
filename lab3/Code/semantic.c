@@ -61,10 +61,12 @@ for (int i = 0; i < HASHSIZE + 1; ++i) {
             continue;
         else{
         printf("name:%s line:%d is defined:%d size:%d kind:%d Depth:%d ",hashTable[i]->name,hashTable[i]->line,hashTable[i]->defined,hashTable[i]->size,hashTable[i]->type->kind,hashTable[i]->depth);
-        if(hashTable[i]->op->kind==FUNCTION_O)
+        if(hashTable[i]->op&&hashTable[i]->op->kind==FUNCTION_O)
             printf(" op-FUN:%s\n",hashTable[i]->op->u.func_name);
-        else
+        else if(hashTable[i]->op)
             printf(" op-No:%d\n",hashTable[i]->op->u.var_no);    
+        else
+            printf("\n");
         }
 }
 }
@@ -160,36 +162,8 @@ hashNode* newSymbol(const char* name, Type* type, int line, int defined,int dept
     temp->depth=depth;
     temp->defined = defined;
     temp->op = new_symbol_op(name,type);
-        
-    if(temp->type->kind==BASIC)
-    {
-        temp->size=32;
-    }
-    else if(temp->type->kind==ARRAY)
-    {
-        Type * stack [100],*cur=type;
-        int top=0;
-        while(cur->kind!=BASIC)
-        {
-            stack[top]=cur;
-            cur=cur->u.array.elem;
-            ++top;
-        }
-        int size=32;
-        while(top>0)
-        {
-            cur=stack[--top];
-            size*=cur->u.array.size;
-        }
-        temp->size=size;
-    }
-    else if(temp->type->kind==STRUCTURE)
-    {
-    }
-    else if(temp->type->kind==FUNCTION)
-    {
-
-    }
+    temp->size=getTypeSize(type);    
+    
     return temp;
 }
 
@@ -1031,3 +1005,24 @@ void serror(int errorType,int line,char* msg)
     printf("Error type %d at Line %d: %s.\n",errorType,line,msg);
 }
 
+int getTypeSize(Type* typeElement)
+{
+    if(!typeElement)
+        return 0;
+    if(typeElement->kind==BASIC)
+        return 4;
+    if(typeElement->kind==ARRAY)
+        return typeElement->u.array.size*getTypeSize(typeElement->u.array.elem);
+    if(typeElement->kind==STRUCTURE)
+        {
+            FieldList*head = typeElement->u.structure;
+            int res = 0;
+            while(head)
+            {
+                res+=getTypeSize(head->type);
+                head=head->tail;
+            }
+            return res;
+        }
+   return 0;
+}

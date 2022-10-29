@@ -4,6 +4,7 @@ int varCount = 1, tempCount = 1, labelCount = 1;
 InterCodes* head;
 InterCodes* tail;
 
+
 char* printOperand(Operand* op)
 {
     char* res = (char*)malloc(40);
@@ -46,9 +47,21 @@ void writeToFile(char* fielname)
                 fprintf(f, "FUNCTION %s :\n", printOperand(cur->code.u.single.op));
                 break;
             case ASSIGN_I: {
-                char* l = printOperand(cur->code.u.assign.left);
-                char* r = printOperand(cur->code.u.assign.right);
-                fprintf(f, "%s := %s\n", l, r);
+                    char* l = printOperand(cur->code.u.assign.left);
+                    char* r = printOperand(cur->code.u.assign.right);
+                    switch (cur->code.type) {
+                    case NORMAL_I:
+                        fprintf(f, "%s := %s\n", l, r);
+                        break;
+                    case GETVAL_I:
+                        fprintf(f, "%s := *%s\n", l, r);
+                        break;
+                    case SETVAL_I:
+                        fprintf(f, "*%s := %s\n", l, r);
+                        break;
+                    default:
+                        break;
+                    }
                 } break;
             case ADD_I: {
                 char* r = printOperand(cur->code.u.binop.res);
@@ -123,10 +136,14 @@ Operand* newLabel()
     return op;
 }
 
-Operand* newTemp()
+Operand* newTemp(int type)
 {
     Operand* op = (Operand*)malloc(sizeof(Operand));
     op->kind = TEMP_O;
+    if(type==ADDRESS_O)
+        op->type=ADDRESS_O;
+    else
+        op->type=VAL_O;
     op->u.var_no = tempCount;
     ++tempCount;
     return op;
@@ -165,10 +182,11 @@ void createCond(Operand* op1, Operand* op2, Operand* target, char* re)
     tail = tail->next;
 }
 
-void createAssign( Operand* left, Operand* right)
+void createAssign( Operand* left, Operand* right,int type)
 {
     InterCodes* p = (InterCodes*)malloc(sizeof(InterCodes));
     p->code.kind = ASSIGN_I;
+    p->code.type = type;
     p->code.u.assign.left = left;
     p->code.u.assign.right = right;
     p->next = NULL;
@@ -202,6 +220,18 @@ void createSinop(unsigned kind, Operand* res, Operand* op)
     tail = tail->next;
 }
 
+void createDec(Operand* op, unsigned size)
+{
+    InterCodes* p = (InterCodes*)malloc(sizeof(InterCodes));
+    p->code.kind = DEC_I;
+    p->code.u.dec.op = op;
+    p->code.u.dec.size = size;
+    p->next = NULL;
+    p->prev = tail;
+    tail->next = p;
+    tail = tail->next;
+}
+
 void translate_init()
 {
     head = (InterCodes*)malloc(sizeof(InterCodes));
@@ -227,6 +257,40 @@ Operand* new_symbol_op(char*name,Type* type)
         op->kind = FUNCTION_O;
         op->u.func_name = name;
     }
+    if(type->kind==STRUCTURE&&type->is_var==1)
+    {
+        op->kind = VARIABLE_O;
+        op->u.var_no = varCount++;
+        op->type = ADDRESS_O;
+        return op;
+    }
+    if(type->kind==ARRAY)
+    {
+        op->kind = VARIABLE_O;
+        op->u.var_no = varCount++;
+        op->type = ADDRESS_O;
+        return op;
+    }
+    return NULL;
+}
+
+int getOffsetInStruct(Type* type,char* domain,Type* returnType)
+{
+    if(!type)
+    {
+        returnType=NULL;
+        return 0;
+    }
+    FieldList*head =type->u.structure;
+    int res = 0;
+    while(head)
+    {
+        if(!strcmp(domain,head->name))
+            break;
+        res+=getTypeSize(head->type);
+        head=head->tail;
+    }
+    return res;
 }
 
 void Translate(treeNode *root)
@@ -337,7 +401,7 @@ void translate_Stmt(treeNode* node)
             //Stmt -> RETURN Exp SEMI
 			else if(!strcmp( "RETURN",node->child->name)) 
 			{
-                Operand* t1 = newTemp();
+                Operand* t1 = newTemp(VAL_O);
                 translate_Exp(node->child->bro, t1);
                 createSingle(RETURN_I, t1);
 			}
@@ -404,8 +468,8 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
     // Exp RELOP Exp
     else if(node->child->bro&&!strcmp("RELOP",node->child->bro->name))
     {
-        Operand* t1 = newTemp();
-        Operand* t2 = newTemp();
+        Operand* t1 = newTemp(VAL_O);
+        Operand* t2 = newTemp(VAL_O);
         translate_Exp(node->child, t1);
         translate_Exp(node->child->bro->bro, t2);
         createCond(t1, t2, label_true, node->child->bro->s_val);
@@ -415,17 +479,17 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
     else if(node->child&&!strcmp("NOT",node->child->s_val))
         translate_Cond(node->child->bro,label_false, label_true);
     else {
-        Operand* t1 = newTemp();
+        Operand* t1 = newTemp(VAL_O);
         translate_Exp(node, t1);
         createCond(t1, newConstant(0), label_true, "!=");
         createSingle(GOTO_I, label_false);
     } 
 }
 
-void translate_Exp(treeNode* node,Operand* place)
+Type* translate_Exp(treeNode* node,Operand* place)
 {
     if (node==NULL)
-            return ;
+            return NULL ;
     //Exp->INT
      if(!strcmp("INT",node->child->name))
         {
@@ -434,7 +498,7 @@ void translate_Exp(treeNode* node,Operand* place)
                 Operand* op = (Operand*)malloc(sizeof(Operand));
                 op->kind = CONSTANT_O;
                 op->u.value = node->child->i_val;
-                createAssign(place, op);
+                createAssign(place, op,NORMAL_I);
             }
         }
     //Exp->FLOAT
@@ -445,7 +509,7 @@ void translate_Exp(treeNode* node,Operand* place)
     else if(!strcmp("Exp",node->child->name))
         {
             if(node->child->bro==NULL)
-                return ;
+                return NULL ;
             //Exp -> Exp ASSIGNOP Exp
             if(!strcmp("ASSIGNOP",node->child->bro->name))
             {
@@ -456,35 +520,115 @@ void translate_Exp(treeNode* node,Operand* place)
                 {
                     hashNode* symbol = search(E1->child->s_val);
                     Operand* t1 = symbol->op;
-                    Operand* t2 = newTemp();
+                    Operand* t2;
+                    //左边为地址，那就为结构体或数组，都是不允许的
+                    if(t1->type==ADDRESS_O)
+                        {
+                            printf("direct assign on array or structure\n");
+                            exit(-1);
+                        }
+                    else
+                        t2 = newTemp(VAL_O);
                     translate_Exp(E2,t2);
-                    createAssign(t1 , t2);
+                    createAssign(t1 , t2,NORMAL_I);
                     if (place) 
-                        createAssign( place, t1);
+                        createAssign( place, t1,NORMAL_I);
                 }
                 else if(E1->child&&!strcmp("Exp",E1->child->name))
                 {
                     // E1->Exp LB Exp RB 
                     if(E1->child->bro&&!strcmp("LB",E1->child->bro->name))
                     {
+                        //E1是数组访问，则获取地址于t1
+                        Operand* t1= newTemp(ADDRESS_O);
+                        translate_Exp(E1,t1);
+                        Operand* t2 = newTemp(VAL_O);
+                        translate_Exp(E2,t2);
+                        createAssign(t1,t2,SETVAL_I);
+                        if (place) 
+                            createAssign( place, t1,NORMAL_I);
 
                     }
                     //E1->Exp DOT ID
                     else if(E1->child->bro&&!strcmp("DOT",E1->child->bro->name))
                     {
-                        
+                            //E1是结构体中元素，则获取地址于t1
+                            Operand* t1 = newTemp(ADDRESS_O);
+                            translate_Exp(E1, t1);
+                            //E2还是应该是某个值
+                            Operand* t2 = newTemp(VAL_O);
+                            translate_Exp(E2, t2);
+                            createAssign(t1, t2,SETVAL_I);
+                            if (place) 
+                                createAssign( place, t1,NORMAL_I);
                     }
                 }
             }
             //Exp -> Exp LB Exp RB
             else if(!strcmp("LB",node->child->bro->name))
             {
-                //translate_Exp(node->child->bro->bro);
+                //根据传进来的place判断应该返回值还是地址
+                if(place)
+                {
+                    Operand* t1 = newTemp(ADDRESS_O);
+                    //返回E1的地址和类型
+                    Type*typeE1 = translate_Exp(node->child,t1);
+                    Type*typeElement = typeE1->u.array.elem;
+                    int ElementSize = getTypeSize(typeElement);
+
+                    Operand*t2 = newTemp(VAL_O);
+                    //返回E2的值
+                    translate_Exp(node->child->bro->bro,t2);
+                    //计算当前维数的偏移量，等会儿再加上E1的地址即可
+                    Operand* offset = newTemp(VAL_O);
+                    createBinop(MUL_I, offset, t2, newConstant(ElementSize));
+                    //渴望得到该处的值
+                    if(place->type==VAL_O)
+                    {
+                        Operand* add = newTemp(ADDRESS_O);
+                        createBinop(ADD_I, add,t1,offset);
+                        createAssign(place, add,GETVAL_I);
+                    }
+                    //渴望得到该处的地址
+                    else
+                    {
+                        createBinop(ADD_I, place,t1,offset);
+                    }
+                    return typeElement;
+                }
             }
             //Exp -> Exp DOT ID
             else if(!strcmp("DOT",node->child->bro->name))
             {
-                //translate_Exp(node->child);
+                if(place)
+                {
+                    Operand* t1 = newTemp(ADDRESS_O);
+                    Type* type = translate_Exp(node->child,t1);  //应该会返回一个地址t1,并返回E1的type
+                    if(type)
+                    {
+                        if(type->kind==STRUCTURE)
+                        {
+                            //从结构体中获取ID的类型和所处偏移量。
+                            Type* returnType;
+                            int offset = getOffsetInStruct(type,node->child->bro->bro->s_val,returnType);
+                            Operand* off = newConstant(offset);
+                            //渴望获取值
+                            if(place->type==VAL_O)
+                            {
+                                Operand* add = newTemp(ADDRESS_O);
+                                createBinop(ADD_I, add, t1, off);
+                                createAssign( place, add,GETVAL_I);
+                            }
+                            //渴望获取地址
+                            else
+                            {
+                                createBinop(ADD_I, place, t1, off);
+                            }                   
+                            return returnType;          
+                        }
+                    }
+                }
+
             }
             //Exp -> Exp AND/OR/RELOP/PLUS/MINUS/STAR/DIV EXP
             else 
@@ -495,13 +639,13 @@ void translate_Exp(treeNode* node,Operand* place)
                     Operand* label2 = newLabel();
                     if (place)
                         {
-                            createAssign(place, newConstant(0));
+                            createAssign(place, newConstant(0),NORMAL_I);
                         }
                     translate_Cond(node, label1, label2);
                     createSingle(LABEL_I, label1);
                     if (place)
                         {
-                            createAssign(place,newConstant(1));
+                            createAssign(place,newConstant(1),NORMAL_I);
                         }
                     createSingle(LABEL_I, label2);
                 }
@@ -509,9 +653,9 @@ void translate_Exp(treeNode* node,Operand* place)
                 {
                         treeNode* E1 = node->child;
                         treeNode* E2 = node->child->bro->bro;
-                        Operand* t1 = newTemp();
+                        Operand* t1 = newTemp(VAL_O);
                         translate_Exp(E1,t1);
-                        Operand* t2 = newTemp();
+                        Operand* t2 = newTemp(VAL_O);
                         translate_Exp(E2,t2);
                         if (place)
                         {
@@ -534,7 +678,7 @@ void translate_Exp(treeNode* node,Operand* place)
                 translate_Exp(node->child->bro, place);
             else if(!strcmp("MINUS",node->child->name))
             {
-                Operand* t1 = newTemp();
+                Operand* t1 = newTemp(VAL_O);
                 translate_Exp(node->child->bro, t1);
                 if (place)
                     createBinop(SUB_I, place, newConstant(0), t1);
@@ -547,13 +691,13 @@ void translate_Exp(treeNode* node,Operand* place)
                 Operand* label2 = newLabel();
                 if (place)
                     {
-                        createAssign(place, newConstant(0));
+                        createAssign(place, newConstant(0),NORMAL_I);
                     }
                 translate_Cond(node, label1, label2);
                 createSingle(LABEL_I, label1);
                 if (place)
                     {
-                        createAssign(place,newConstant(1));
+                        createAssign(place,newConstant(1),NORMAL_I);
                     }
                 createSingle(LABEL_I, label2);
         } 
@@ -566,7 +710,17 @@ void translate_Exp(treeNode* node,Operand* place)
             if (place) 
             {
                 hashNode* symbol = search(node->child->s_val);
-                createAssign(place, symbol->op);
+                if(place->type==VAL_O)
+                {
+                    //既然希望得到一个值，那么必然只能为基本类型
+                    createAssign(place, symbol->op,NORMAL_I);
+                }
+                else
+                {
+                    //既然希望得到一个地址，那本身这个符号就是地址
+                    createAssign(place, symbol->op,NORMAL_I);
+                }
+                return symbol->type;
             }
         }
         //ID LP Args RP
@@ -575,12 +729,12 @@ void translate_Exp(treeNode* node,Operand* place)
             hashNode* func = search(node->child->s_val);
             int arg_count = func->type->u.function.argCount;
             Operand * arg_list[arg_count];
-            translate_Args(node->child->bro->bro,arg_list,arg_count-1);
+            translate_Args(node->child->bro->bro,arg_list,arg_count-1,func->type->u.function.para);
             if (!strcmp(func->name, "write")) 
             {
                 createSingle(WRITE_I, arg_list[0]);
                 if (place)
-                    createAssign(place, newConstant(0));
+                    createAssign(place, newConstant(0),NORMAL_I);
             } 
             else {
                 for (int i = 0; i < arg_count; ++i) {
@@ -592,7 +746,7 @@ void translate_Exp(treeNode* node,Operand* place)
                 if (place)
                     createSinop(CALL_I, place, op);
                 else {
-                    Operand* t1 = newTemp();
+                    Operand* t1 = newTemp(VAL_O);
                     createSinop(CALL_I, t1, op);
                 }
             }
@@ -605,8 +759,9 @@ void translate_Exp(treeNode* node,Operand* place)
             {
                 if (place)
                         createSingle(READ_I, place);
-                else {
-                    Operand* t1 = newTemp();
+                else 
+                {
+                    Operand* t1 = newTemp(VAL_O);
                     createSingle(READ_I, t1);
                 }
             }
@@ -618,30 +773,40 @@ void translate_Exp(treeNode* node,Operand* place)
                 if (place)
                     createSinop(CALL_I, place, op);
                 else {
-                    Operand* t1 = newTemp();
+                    Operand* t1 = newTemp(VAL_O);
                     createSinop(CALL_I, t1, op);
                 }
             }
         }
     }
+    return NULL;
 }
 
-void  translate_Args(treeNode* node,Operand* arg_list[],int head)
+void  translate_Args(treeNode* node,Operand* arg_list[],int head,FieldList* arghead)
 {
     if(node==NULL)
         return;
         // :Exp COMMA Args
     if(node->child->bro!=NULL)
     {
-        Operand* t1= newTemp();
+
+        Operand* t1;
+        if(arghead->type->kind==BASIC)
+            t1=newTemp(VAL_O);
+        else
+            t1=newTemp(ADDRESS_O);
         translate_Exp(node->child,t1);
         arg_list[head]=t1;
-        translate_Args(node->child->bro->bro,arg_list,head--);
+        translate_Args(node->child->bro->bro,arg_list,--head,arghead->tail);
     }
     //:Exp
     else
     {
-        Operand* t1= newTemp();
+        Operand* t1;
+        if(arghead->type->kind==BASIC)
+            t1=newTemp(VAL_O);
+        else
+            t1=newTemp(ADDRESS_O);
         translate_Exp(node->child,t1);
         arg_list[head]=t1;
     }
@@ -730,7 +895,14 @@ void translate_VarDec(treeNode* node,int headType)
             //结构体
             else if(headType==2)
             {
-
+                hashNode* symbol = search(node->child->s_val);
+                createDec(symbol->op, symbol->size);
+            }
+            else
+            {
+                hashNode* symbol = search(node->child->s_val);
+                if(symbol->type->kind==ARRAY)
+                    createDec(symbol->op, symbol->size);
             }
         }
         //VarDec -> VarDec LP INT RP
@@ -799,8 +971,8 @@ void  translate_Dec(treeNode *node)
     {
         translate_VarDec(node->child,0);
         hashNode* res = search(node->child->child->s_val);
-        Operand* t1 = newTemp();
+        Operand* t1 = newTemp(VAL_O);
         translate_Exp(node->child->bro->bro, t1);
-        createAssign(res->op, t1);
+        createAssign(res->op, t1,NORMAL_I);
     }
 }

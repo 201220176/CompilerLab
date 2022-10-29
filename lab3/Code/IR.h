@@ -7,7 +7,7 @@ typedef struct InterCode InterCode;
 typedef struct InterCodes InterCodes;
 
 struct Operand_ {
-    enum { VARIABLE_O, TEMP_O, PARAMETER_O,FUNCTION_O,CONSTANT_O, LAB_O } kind;
+    enum { VARIABLE_O, TEMP_O, PARAMETER_O,FUNCTION_O,CONSTANT_O, LABEL_O } kind;
     enum { VAL_O, ADDRESS_O} type;
     union {
         int var_no;
@@ -49,6 +49,7 @@ struct InterCodes {
     InterCodes *prev, *next;
 };
 
+void writeToFile(char* fielname);
 Operand* newLabel();
 Operand* newTemp();
 void createSingle(int,Operand*);

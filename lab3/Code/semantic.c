@@ -25,6 +25,7 @@ void tableInit()
     read->kind = FUNCTION;
     read->u.function.para = NULL;
     read->u.function.ret = _int_type;
+    read->u.function.argCount=0;
     addSymbol("read", read, 0, 1,0);
 
     //添加写函数及其参数
@@ -32,6 +33,7 @@ void tableInit()
 
     Type* write = (Type*)malloc(sizeof(Type));
     write->kind = FUNCTION;
+    write->u.function.argCount=1;
     write->u.function.para = (FieldList*)malloc(sizeof(FieldList));
     write->u.function.para->name = (char*)malloc(sizeof(char)*7);
     write->u.function.para->name = "output";
@@ -57,8 +59,13 @@ void printTable()
 for (int i = 0; i < HASHSIZE + 1; ++i) {
         if (!hashTable[i])
             continue;
+        else{
+        printf("name:%s line:%d is defined:%d size:%d kind:%d Depth:%d ",hashTable[i]->name,hashTable[i]->line,hashTable[i]->defined,hashTable[i]->size,hashTable[i]->type->kind,hashTable[i]->depth);
+        if(hashTable[i]->op->kind==FUNCTION_O)
+            printf(" op-FUN:%s\n",hashTable[i]->op->u.func_name);
         else
-        printf("name:%s line:%d is defined:%d size:%d kind:%d Depth:%d\n ",hashTable[i]->name,hashTable[i]->line,hashTable[i]->defined,hashTable[i]->size,hashTable[i]->type->kind,hashTable[i]->depth);
+            printf(" op-No:%d\n",hashTable[i]->op->u.var_no);    
+        }
 }
 }
 
@@ -696,7 +703,7 @@ void FunDec(treeNode* node, Type* ret, int defined)
         {
             type->u.function.para = NULL;
         }
-
+        
         //定义函数，将所有参数也加入符号表
         if(defined)
         {
@@ -812,7 +819,10 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
                 }
             }
             if(!headType)
+            {
+                //printf("%s\n",node->child->s_val);
                 addSymbol(node->child->s_val, temp, node->child->line, defined,depth);
+            }
             return temp;
         }
         //VarDec -> VarDec LP INT RP

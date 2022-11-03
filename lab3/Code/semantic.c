@@ -26,10 +26,10 @@ void tableInit()
     read->u.function.para = NULL;
     read->u.function.ret = _int_type;
     read->u.function.argCount=0;
-    addSymbol("read", read, 0, 1,0);
+    addSymbol("read", read, 0, 1,0,0);
 
     //添加写函数及其参数
-    addSymbol("output", _int_type, 0, 1,1);
+    addSymbol("output", _int_type, 0, 1,1,1);
 
     Type* write = (Type*)malloc(sizeof(Type));
     write->kind = FUNCTION;
@@ -40,7 +40,7 @@ void tableInit()
     write->u.function.para->type = _int_type;
     write->u.function.para->tail = NULL;
     write->u.function.ret = _int_type;
-    addSymbol("write", write, 0, 1,0);
+    addSymbol("write", write, 0, 1,0,0);
 }
 
 unsigned hash_pjw( const char* name)
@@ -153,7 +153,7 @@ hashNode* search(const char * name)
     return head;
 }
 
-hashNode* newSymbol(const char* name, Type* type, int line, int defined,int depth)
+hashNode* newSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara)
 {
     hashNode* temp = (hashNode*)malloc(sizeof(hashNode));
     temp->name=name;
@@ -161,13 +161,13 @@ hashNode* newSymbol(const char* name, Type* type, int line, int defined,int dept
     temp->line = line;
     temp->depth=depth;
     temp->defined = defined;
-    temp->op = new_symbol_op(name,type);
+    temp->op = new_symbol_op(name,type,isfunpara);
     temp->size=getTypeSize(type);    
     
     return temp;
 }
 
-void addSymbol(const char* name, Type* type, int line, int defined,int depth)
+void addSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara)
 {
     if(!type)
         return;    
@@ -175,7 +175,7 @@ void addSymbol(const char* name, Type* type, int line, int defined,int depth)
     int index =hash_pjw(name);
     //第一次出现该符号
     if(hashTable[index]==NULL)
-        insert(newSymbol(name, type, line, defined,depth));
+        insert(newSymbol(name, type, line, defined,depth,isfunpara));
     //depth = -1只有结构体域名(此处不会出现)  结构体名、函数名、全局变量是0 函数域名是1
     else
     {
@@ -189,7 +189,7 @@ void addSymbol(const char* name, Type* type, int line, int defined,int depth)
         }
         //第一次出现该符号
         if(cur==NULL)
-             insert(newSymbol(name, type, line, defined,depth));
+             insert(newSymbol(name, type, line, defined,depth,isfunpara));
         else
         {
             //冲突出现在同一层
@@ -236,7 +236,7 @@ void addSymbol(const char* name, Type* type, int line, int defined,int depth)
                 else if(type->kind==STRUCTURE&&type->is_var==0)
                     serror(Type16,line,"Redefined structure");
                 else
-                    insert(newSymbol(name, type, line, defined,depth));
+                    insert(newSymbol(name, type, line, defined,depth,isfunpara));
             }
 
         }
@@ -631,7 +631,7 @@ Type* StructSpecifier(treeNode* node,int depth)
                 {
                     name = node->child->bro->child->s_val;
                     DefList(node->child->bro->bro->bro, type,0,-1);
-                    addSymbol(name, type, node->line, 1,0);
+                    addSymbol(name, type, node->line, 1,0,0);
                 }
             else
                 {
@@ -685,11 +685,11 @@ void FunDec(treeNode* node, Type* ret, int defined)
             while(para)
             {
                 type->u.function.argCount++;
-                addSymbol(para->name, para->type, node->child->line, 1,1);
+                addSymbol(para->name, para->type, node->child->line, 1,1,1);
                 para = para->tail;
             }
         }
-        addSymbol(node->child->s_val, type, node->child->line, defined,0);
+        addSymbol(node->child->s_val, type, node->child->line, defined,0,0);
 }
 
 
@@ -795,7 +795,7 @@ Type* VarDec(treeNode* node, Type *type, Type* headType,int defined,FieldList* p
             if(!headType)
             {
                 //printf("%s\n",node->child->s_val);
-                addSymbol(node->child->s_val, temp, node->child->line, defined,depth);
+                addSymbol(node->child->s_val, temp, node->child->line, defined,depth,0);
             }
             return temp;
         }

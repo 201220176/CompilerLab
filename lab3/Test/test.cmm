@@ -1,21 +1,28 @@
- struct Operands
- {
- int o1;
- int o2;
- };
 
- int add(struct Operands temp)
- {
- return (temp.o1 + temp.o2);
- }
+struct Node{
+    int array1[10];
+    int array2[10][10];
+};
 
- int main()
- {
- int n;
- struct Operands op;
- op.o1 = 1;
- op.o2 = 2;
- n = add(op);
- write(n);
- return 0;
- }
+int add(int m,int n[10])
+{
+    int o[10][10];
+    o[0]=n;
+    return m+o[0][3];
+}
+
+int add2(struct Node n1,struct Node n2)
+{
+    return n1.array1[2] + n2.array2[0][3];
+}
+
+int main()
+{
+    int y[10][5];
+    struct Node node[10];
+    y[2][0]=2;
+    y[3][1]=3;
+    node[0].array1[2] =y[2][0];
+    node[1].array2[0][3]=y[3][1]; 
+    write(add2(node[0],node[1]));
+}

@@ -1,5 +1,7 @@
 #ifndef IR_H
 #define IR_H
+
+#define DEBUG 0
 #include"semantic.h"
 
 typedef struct Operand_ Operand;
@@ -9,16 +11,17 @@ typedef struct InterCodes InterCodes;
 struct Operand_ {
     enum { VARIABLE_O, TEMP_O, PARAMETER_O,FUNCTION_O,CONSTANT_O, LABEL_O } kind;
     enum { VAL_O, ADDRESS_O} type;
+    int isfunctionpara;     //仅当该符号出现在符号表中，被判断为变量时使用，因为当其出现在函数参数时，值为真正的地址；而局部变量则只为名字。
     union {
         int var_no;
-        long long int value;
+        int value;
         char* func_name;
     } u;
 };
 
 struct InterCode {
-    enum { LABEL_I, ASSIGN_I, ADD_I,FUNCTION_I,  SUB_I, MUL_I, DIV_I, GOTO_I, IF_I, RETURN_I, DEC_I, ARG_I, CALL_I, PARAM_I, READ_I, WRITE_I } kind;
-    enum { NORMAL_I, GETADDR_I, GETVAL_I, SETVAL_I, COPY_I } type;
+    enum { LABEL_I, ASSIGN_I, FUNCTION_I,  PARAM_I,  CALL_I,ARG_I,ADD_I, SUB_I, MUL_I, DIV_I, IF_I,GOTO_I,  RETURN_I, DEC_I, READ_I, WRITE_I } kind;
+    enum { NORMAL_I, GETVAL_I, SETVAL_I,GETADDR_I,COPY_I} type;
     union {
         struct {
             Operand *left, *right;
@@ -28,7 +31,7 @@ struct InterCode {
         } binop;
         struct {
             Operand *res, *op;
-        } sinop;
+        } unaryop;
         struct {
             Operand* op;
         } single;
@@ -61,8 +64,8 @@ void createBinop(unsigned kind,  Operand* res, Operand* op1, Operand* op2);
 void createSinop(unsigned kind, Operand* res, Operand* op);
 void createDec(Operand* op, unsigned size);
 void translate_init();
-Operand* new_symbol_op(char*name,Type* type);
-int getOffsetInStruct(Type* type,char* domain,Type* returnType);
+Operand* new_symbol_op(char*name,Type* type,int isfunpara);
+int getOffsetInStruct(Type* type,char* domain,Type** returnType);
 void Translate(treeNode *root);
 void translate_Program(treeNode* node);
 void translate_ExtDefList(treeNode* node);
@@ -71,7 +74,7 @@ void translate_CompSt(treeNode* node) ;
 void translate_StmtList(treeNode* node);
 void translate_Stmt(treeNode* node);
 void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false);
-Type* translate_Exp(treeNode* node,Operand* place);
+Type* translate_Exp(treeNode* node,Operand* place , int headType);
 void  translate_Args(treeNode* node,Operand* arg_list[],int head,FieldList* arghead);
 void translate_FunDec(treeNode* node);
 void translate_VarList(treeNode* node,int headType);
@@ -79,9 +82,10 @@ void translate_ParamDec(treeNode* node,int headType);
 void translate_ExtDecList(treeNode* node);
 void translate_VarDec(treeNode* node,int headType);
 void translate_DefList(treeNode* node);
+int translate_Specifier(treeNode* node);
 void translate_Def(treeNode* node);
-void translate_DecList(treeNode *node);
-void translate_Dec(treeNode *node) ;
+void translate_DecList(treeNode *node,int headType);
+void  translate_Dec(treeNode *node,int headType) ;
 
 
 #endif

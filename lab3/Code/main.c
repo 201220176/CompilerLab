@@ -59,7 +59,9 @@ int main(int argc, char** argv)
         Program(root);
 		printTable();
 		Translate(root);
-		writeToFile("IRoutput.ir");
+
+		writeToFile(argv[2]);
+		//writeToFile("out.ir");
 	}
 
 	return 0;

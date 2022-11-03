@@ -15,7 +15,7 @@ float s2Float(const char *s){
 	return strtof(s,NULL);
 }
 char *s2Str(const char *s){
-	char * tmp = (char *)malloc(sizeof(s));
+	char * tmp = (char *)malloc(strlen(s)+1);
 	strcpy(tmp, s);
 	return tmp;
 }
@@ -51,8 +51,9 @@ treeNode* createTreeNode2(const char* name,int num, ...)
 	{
 		child = va_arg(args, treeNode*);
 		treeNode *temp = res->child;
-		while(temp->bro != NULL)
+		while(temp->bro != NULL) {
 			temp = temp->bro;
+		}
 		temp->bro = child;
 	}
 	va_end(args);

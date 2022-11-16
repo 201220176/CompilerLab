@@ -20,11 +20,11 @@ struct Operand_ {
 };
 
 struct InterCode {
-    enum { LABEL_I, ASSIGN_I, FUNCTION_I,  PARAM_I,  CALL_I,ARG_I,ADD_I, SUB_I, MUL_I, DIV_I, IF_I,GOTO_I,  RETURN_I, DEC_I, READ_I, WRITE_I } kind;
-    enum { NORMAL_I, GETVAL_I, SETVAL_I,GETADDR_I,COPY_I} type;
+    enum { ASSIGN_I, ADD_I, SUB_I, MUL_I,  READ_I, WRITE_I,DIV_I, LABEL_I, FUNCTION_I,  PARAM_I,  CALL_I,ARG_I,IF_I,GOTO_I,  RETURN_I, DEC_I} kind;
     union {
         struct {
             Operand *left, *right;
+            enum { NORMAL_I, GETVAL_I, SETVAL_I,GETADDR_I,COPY_I} type;
         } assign;
         struct {
             Operand *res, *op1, *op2;
@@ -34,21 +34,20 @@ struct InterCode {
         } unaryop;
         struct {
             Operand* op;
-        } single;
-        struct {
-            Operand *op1, *op2, *target;
-            char relop[4];
-        } cond;
+        } single;        
         struct {
             Operand* op;
-            unsigned size;
+            int size;
         } dec;
+        struct {
+            Operand *op1, *op2, *target;
+            char *relop;
+        } cond;
     } u;
 };
 
 struct InterCodes {
     InterCode code;
-    int isDelete;
     InterCodes *prev, *next;
 };
 
@@ -57,12 +56,12 @@ void writeToFile(char* fielname);
 Operand* newLabel();
 Operand* newTemp(int type);
 Operand *newConstant(int val);
-void createSingle(int,Operand*);
-void createCond(Operand* op1, Operand* op2, Operand* target, char* re);
-void createAssign( Operand* left, Operand* right,int type);
-void createBinop(unsigned kind,  Operand* res, Operand* op1, Operand* op2);
-void createSinop(unsigned kind, Operand* res, Operand* op);
-void createDec(Operand* op, unsigned size);
+void singleCode(int,Operand*);
+void condCode(Operand* op1, Operand* op2, Operand* target, char* re);
+void assignCode( Operand* left, Operand* right,int type);
+void binCode(unsigned kind,  Operand* res, Operand* op1, Operand* op2);
+void unaryCode(unsigned kind, Operand* res, Operand* op);
+void decCode(Operand* op, unsigned size);
 void translate_init();
 Operand* new_symbol_op(char*name,Type* type,int isfunpara);
 int getOffsetInStruct(Type* type,char* domain,Type** returnType);

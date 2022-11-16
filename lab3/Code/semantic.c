@@ -43,7 +43,7 @@ void tableInit()
     addSymbol("write", write, 0, 1,0,0);
 }
 
-unsigned hash_pjw( const char* name)
+unsigned hash_pjw(char* name)
 {
     unsigned val = 0,i;
     for(;*name;++name)
@@ -71,7 +71,7 @@ for (int i = 0; i < HASHSIZE + 1; ++i) {
 }
 }
 
-Type* getTypeFromTable(const char * name)
+Type* getTypeFromTable(  char * name)
 {
     hashNode* res=search(name);
     if(res)
@@ -79,7 +79,7 @@ Type* getTypeFromTable(const char * name)
     return NULL;
 }
 
-Type* getTypeFromStruct(const char * name,Type*structure)
+Type* getTypeFromStruct(  char * name,Type*structure)
 {
     if(!structure)
         return NULL;
@@ -140,7 +140,7 @@ void insert(hashNode* node)
     }
 }
 
-hashNode* search(const char * name)
+hashNode* search(char * name)
 {
     unsigned index =  hash_pjw(name);
     hashNode* head = hashTable[index];
@@ -153,7 +153,7 @@ hashNode* search(const char * name)
     return head;
 }
 
-hashNode* newSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara)
+hashNode* newSymbol(char* name, Type* type, int line, int defined,int depth,int isfunpara)
 {
     hashNode* temp = (hashNode*)malloc(sizeof(hashNode));
     temp->name=name;
@@ -167,7 +167,7 @@ hashNode* newSymbol(const char* name, Type* type, int line, int defined,int dept
     return temp;
 }
 
-void addSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara)
+void addSymbol(char* name, Type* type, int line, int defined,int depth,int isfunpara)
 {
     if(!type)
         return;    
@@ -243,7 +243,7 @@ void addSymbol(const char* name, Type* type, int line, int defined,int depth,int
     }
 }
 
-int isDoInStructure(const char* domain,Type*structure)
+int isDoInStructure(char* domain,Type*structure)
 {
     if(!structure)
         return 0;
@@ -966,7 +966,7 @@ int checkDeclaration(Type* Ltype,Type*Rtype)
     return 1;
     }
 
-int checkOperator(Type* Ltype,Type*Rtype,const char* operator)
+int checkOperator(Type* Ltype,Type*Rtype,char* operator)
 {
     if(!strcmp("ASSIGNOP",operator))
     {

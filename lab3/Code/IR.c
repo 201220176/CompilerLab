@@ -5,37 +5,38 @@ InterCodes* head;
 InterCodes* tail;
 
 
-char* printOperand(Operand* op)
+char* toOp(Operand* op)
 {
-    char* res = (char*)malloc(40);
+    char* str = (char*)malloc(100);
     if(!op)
     {
-        res[0]='\0';
-        return res;
+        str[0]='\0';
+        return str;
     }
-    switch (op->kind) {
+    switch (op->kind) 
+    {
     case VARIABLE_O:
-        sprintf(res, "v%d", op->u.var_no);
+        sprintf(str, "v%d", op->u.var_no);
         break;
     case TEMP_O:
-        sprintf(res, "t%d", op->u.var_no);
+        sprintf(str, "t%d", op->u.var_no);
         break;    
     case LABEL_O:
-        sprintf(res, "label%d", op->u.var_no);
+        sprintf(str, "label%d", op->u.var_no);
         break;    
     case CONSTANT_O:
-        sprintf(res, "#%d", op->u.value);
+        sprintf(str, "#%d", op->u.value);
         break;    
     case FUNCTION_O:
-        sprintf(res, "%s", op->u.func_name);
+        sprintf(str, "%s", op->u.func_name);
         break;
     case PARAMETER_O:
-        sprintf(res, "v%d", op->u.var_no);
+        sprintf(str, "v%d", op->u.var_no);
         break;
     default:
         break;
     }
-    return res;
+    return str;
 }
 
 void writeToFile(char* fielname)
@@ -46,91 +47,73 @@ void writeToFile(char* fielname)
     InterCodes* cur = head->next;
     while(cur)
     {
-        switch (cur->code.kind) {
+        switch (cur->code.kind) 
+        {
             case LABEL_I:
-                fprintf(f, "LABEL %s :\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "LABEL %s :\n", toOp(cur->code.u.single.op));
                 break;
             case FUNCTION_I:
-                fprintf(f, "FUNCTION %s :\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "FUNCTION %s :\n", toOp(cur->code.u.single.op));
                 break;
             case ARG_I:
-                fprintf(f, "ARG %s\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "ARG %s\n", toOp(cur->code.u.single.op));
                 break;
             case DEC_I:
-                fprintf(f, "DEC %s %d\n", printOperand(cur->code.u.dec.op), cur->code.u.dec.size);
+                fprintf(f, "DEC %s %d\n", toOp(cur->code.u.dec.op), cur->code.u.dec.size);
                 break;
             case ASSIGN_I: {
-                    char* l = printOperand(cur->code.u.assign.left);
-                    char* r = printOperand(cur->code.u.assign.right);
-                    switch (cur->code.type) {
+                    switch (cur->code.u.assign.type) {
                     case NORMAL_I:
-                        fprintf(f, "%s := %s\n", l, r);
+                        fprintf(f, "%s := %s\n", toOp(cur->code.u.assign.left), toOp(cur->code.u.assign.right));
                         break;
                     case GETVAL_I:
-                        fprintf(f, "%s := *%s\n", l, r);
+                        fprintf(f, "%s := *%s\n", toOp(cur->code.u.assign.left), toOp(cur->code.u.assign.right));
                         break;
                     case SETVAL_I:
-                        fprintf(f, "*%s := %s\n", l, r);
+                        fprintf(f, "*%s := %s\n", toOp(cur->code.u.assign.left), toOp(cur->code.u.assign.right));
                         break;
                     case GETADDR_I:
-                        fprintf(f, "%s := &%s\n", l, r);
+                        fprintf(f, "%s := &%s\n", toOp(cur->code.u.assign.left), toOp(cur->code.u.assign.right));
                         break;
                     case COPY_I:
-                         fprintf(f, "*%s := *%s\n", l, r);
+                         fprintf(f, "*%s := *%s\n", toOp(cur->code.u.assign.left), toOp(cur->code.u.assign.right));
                     break;
                     default:
                         break;
                     }
                 } break;
             case ADD_I: {
-                char* r = printOperand(cur->code.u.binop.res);
-                char* op1 = printOperand(cur->code.u.binop.op1);
-                char* op2 = printOperand(cur->code.u.binop.op2);
-                fprintf(f, "%s := %s + %s\n", r, op1, op2);
+                fprintf(f, "%s := %s + %s\n", toOp(cur->code.u.binop.res), toOp(cur->code.u.binop.op1),toOp(cur->code.u.binop.op2));
             } break;
             case SUB_I: {
-                char* r = printOperand(cur->code.u.binop.res);
-                char* op1 = printOperand(cur->code.u.binop.op1);
-                char* op2 = printOperand(cur->code.u.binop.op2);
-                fprintf(f, "%s := %s - %s\n", r, op1, op2);
+                fprintf(f, "%s := %s - %s\n",toOp(cur->code.u.binop.res),toOp(cur->code.u.binop.op1), toOp(cur->code.u.binop.op2));
             } break;
             case MUL_I: {
-                char* r = printOperand(cur->code.u.binop.res);
-                char* op1 = printOperand(cur->code.u.binop.op1);
-                char* op2 = printOperand(cur->code.u.binop.op2);
-                fprintf(f, "%s := %s * %s\n", r, op1, op2);
+                fprintf(f, "%s := %s * %s\n", toOp(cur->code.u.binop.res), toOp(cur->code.u.binop.op1), toOp(cur->code.u.binop.op2));
             } break;
             case DIV_I: {
-                char* r = printOperand(cur->code.u.binop.res);
-                char* op1 = printOperand(cur->code.u.binop.op1);
-                char* op2 = printOperand(cur->code.u.binop.op2);
-                fprintf(f, "%s := %s / %s\n", r, op1, op2);
+                fprintf(f, "%s := %s / %s\n", toOp(cur->code.u.binop.res), toOp(cur->code.u.binop.op1), toOp(cur->code.u.binop.op2));
             } break;
             case IF_I: {
-                char* op1 = printOperand(cur->code.u.cond.op1);
-                char* op2 = printOperand(cur->code.u.cond.op2);
-                char* tar = printOperand(cur->code.u.cond.target);
-                fprintf(f, "IF %s %s %s GOTO %s\n", op1, cur->code.u.cond.relop, op2, tar);
+                fprintf(f, "IF %s %s %s GOTO %s\n",toOp(cur->code.u.cond.op1), cur->code.u.cond.relop, toOp(cur->code.u.cond.op2), toOp(cur->code.u.cond.target));
             } break;
             case GOTO_I:
-                fprintf(f, "GOTO %s\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "GOTO %s\n", toOp(cur->code.u.single.op));
                 break;
             case RETURN_I:
-                fprintf(f, "RETURN %s\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "RETURN %s\n", toOp(cur->code.u.single.op));
                 break;
             case CALL_I: {
-                char* res = printOperand(cur->code.u.unaryop.res);
-                char* op = printOperand(cur->code.u.unaryop.op);
-                fprintf(f, "%s := CALL %s\n", res, op);
+                fprintf(f, "%s := CALL %s\n", toOp(cur->code.u.unaryop.res), toOp(cur->code.u.unaryop.op));
             } break;
             case PARAM_I:
-                fprintf(f, "PARAM %s\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "PARAM %s\n", toOp(cur->code.u.single.op));
                 break;
             case READ_I:
-                fprintf(f, "READ %s\n", printOperand(cur->code.u.single.op));
+                fprintf(f, "READ %s\n", toOp(cur->code.u.single.op));
                 break;
             case WRITE_I:
-                    fprintf(f, "WRITE %s\n", printOperand(cur->code.u.single.op));
+                    fprintf(f, "WRITE %s\n", toOp(cur->code.u.single.op));
                 break;
             default:
                 break;
@@ -144,8 +127,7 @@ Operand* newLabel()
 {
     Operand* op = (Operand*)malloc(sizeof(Operand));
     op->kind = LABEL_O;
-    op->u.var_no = labelCount;
-    ++labelCount;
+    op->u.var_no = labelCount++;
     return op;
 }
 
@@ -157,8 +139,7 @@ Operand* newTemp(int type)
         op->type=ADDRESS_O;
     else
         op->type=VAL_O;
-    op->u.var_no = tempCount;
-    ++tempCount;
+    op->u.var_no = tempCount++;
     return op;
 }
 
@@ -170,20 +151,20 @@ Operand *newConstant(int val)
     return op;
 }
 
-void createSingle(int kind,Operand*op)
+void singleCode(int kind,Operand*op)
 {
     if(!op)
         return;
     InterCodes* p = (InterCodes*)malloc(sizeof(InterCodes));
     p->code.kind = kind;
     p->code.u.single.op = op;
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
-void createCond(Operand* op1, Operand* op2, Operand* target, char* re)
+void condCode(Operand* op1, Operand* op2, Operand* target, char* re)
 {
     if(!op1||!op2||!target)
         return;
@@ -192,29 +173,30 @@ void createCond(Operand* op1, Operand* op2, Operand* target, char* re)
     p->code.u.cond.op1 = op1;
     p->code.u.cond.op2 = op2;
     p->code.u.cond.target = target;
+    p->code.u.cond.relop=(char*) malloc(4*sizeof(char));
     strcpy(p->code.u.cond.relop, re);
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
-void createAssign( Operand* left, Operand* right,int type)
+void assignCode( Operand* left, Operand* right,int type)
 {
     if(!left||!right)
         return;
     InterCodes* p = (InterCodes*)malloc(sizeof(InterCodes));
     p->code.kind = ASSIGN_I;
-    p->code.type = type;
+    p->code.u.assign.type = type;
     p->code.u.assign.left = left;
     p->code.u.assign.right = right;
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
-void createBinop(unsigned kind,  Operand* res, Operand* op1, Operand* op2)
+void binCode(unsigned kind,  Operand* res, Operand* op1, Operand* op2)
 {
     if(!res||!op1||!op2)
         return;
@@ -223,13 +205,13 @@ void createBinop(unsigned kind,  Operand* res, Operand* op1, Operand* op2)
     p->code.u.binop.res = res;
     p->code.u.binop.op1 = op1;
     p->code.u.binop.op2 = op2;
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
-void createSinop(unsigned kind, Operand* res, Operand* op)
+void unaryCode(unsigned kind, Operand* res, Operand* op)
 {
     if(!res||!op)
         return ;
@@ -237,24 +219,24 @@ void createSinop(unsigned kind, Operand* res, Operand* op)
     p->code.kind = kind;
     p->code.u.unaryop.res = res;
     p->code.u.unaryop.op = op;
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
-void createDec(Operand* op, unsigned size)
+void decCode(Operand* op, unsigned size)
 {
-        if(!op)
+    if(!op)
         return;
     InterCodes* p = (InterCodes*)malloc(sizeof(InterCodes));
     p->code.kind = DEC_I;
     p->code.u.dec.op = op;
     p->code.u.dec.size = size;
+    p->prev = tail;    
     p->next = NULL;
-    p->prev = tail;
     tail->next = p;
-    tail = tail->next;
+    tail =p;
 }
 
 void translate_init()
@@ -272,9 +254,9 @@ void arrayAssign(Type* E1type,Type* E2type,Operand*t1,Operand*t2)
     int s = size1>size2?size2:size1;
     for(int i=0;i<s;++i)
     {
-        createAssign(t1,t2,COPY_I);
-        createBinop(ADD_I, t2, t2, newConstant(4));
-        createBinop(ADD_I, t1, t1, newConstant(4));
+        assignCode(t1,t2,COPY_I);
+        binCode(ADD_I, t2, t2, newConstant(4));
+        binCode(ADD_I, t1, t1, newConstant(4));
     }
 }
 
@@ -379,6 +361,7 @@ void translate_ExtDef(treeNode* node)
         if(DEBUG)
             exit(4);
         translate_ExtDecList(node->child->bro);
+        
     }
      else if(!strcmp("FunDec",node->child->bro->name))
      {
@@ -411,7 +394,7 @@ void translate_CompSt(treeNode* node)
 		if(!strcmp("DefList",node->child->bro->name)) 
 		{
 
-			translate_DefList(node->child->bro);            
+			translate_DefList(node->child->bro);           
 			if(!strcmp("StmtList",node->child->bro->bro->name))
 				translate_StmtList(node->child->bro->bro);
 		}
@@ -451,9 +434,8 @@ void translate_Stmt(treeNode* node)
 		if(node->child)
 		{ 
             //Stmt -> Exp SEMI
-			if(!strcmp("Exp",node->child->name ))
+			if(!strcmp("Exp",node->child->name))
 			{
-
 				translate_Exp(node->child,NULL,0);
 			}
             //Stmt -> CompSt
@@ -465,36 +447,35 @@ void translate_Stmt(treeNode* node)
             //Stmt -> RETURN Exp SEMI
 			else if(!strcmp( "RETURN",node->child->name)) 
 			{
-
+                
                 Operand* t1 = newTemp(VAL_O);
                 translate_Exp(node->child->bro, t1,0);
-                createSingle(RETURN_I, t1);
+                singleCode(RETURN_I, t1);
 			}
             //Stmt -> IF LP Exp RP Stmt 
             else if(!strcmp("IF",node->child->name)&&node->child->bro->bro->bro->bro->bro==NULL)
             {
-
                 Operand* label1 = newLabel();
                 Operand* label2 = newLabel();
                 translate_Cond(node->child->bro->bro, label1, label2);
-                createSingle(LABEL_I, label1);
+                singleCode(LABEL_I, label1);
                 translate_Stmt(node->child->bro->bro->bro->bro);
-                createSingle(LABEL_I, label2);             
+                singleCode(LABEL_I, label2);             
             }
             //Stmt -> IF LP Exp RP Stmt ELSE Stmt 
             else if(!strcmp("IF",node->child->name))
             {
-
                 Operand* label1 = newLabel();
                 Operand* label2 = newLabel();
                 Operand* label3 = newLabel();
                 translate_Cond(node->child->bro->bro, label1, label2);
-                createSingle(LABEL_I, label1);
+                singleCode(LABEL_I, label1);
                 translate_Stmt(node->child->bro->bro->bro->bro);
-                createSingle(GOTO_I, label3);
-                createSingle(LABEL_I, label2);
+                singleCode(GOTO_I, label3);
+                singleCode(LABEL_I, label2);
                 translate_Stmt(node->child->bro->bro->bro->bro->bro->bro);
-                createSingle(LABEL_I, label3);
+                singleCode(LABEL_I, label3);
+                
             }
             // WHILE LP Exp RP Stmt
 			else if(!strcmp("WHILE",node->child->name)) 
@@ -502,13 +483,13 @@ void translate_Stmt(treeNode* node)
                 Operand* label1 = newLabel();
                 Operand* label2 = newLabel();
                 Operand* label3 = newLabel();
-                createSingle(LABEL_I, label1);                                                               
+                singleCode(LABEL_I, label1);                                                               
                 translate_Cond(node->child->bro->bro, label2, label3);
-                createSingle(LABEL_I, label2);
+                singleCode(LABEL_I, label2);
 
                 translate_Stmt(node->child->bro->bro->bro->bro);
-                createSingle(GOTO_I, label1);
-                createSingle(LABEL_I, label3);
+                singleCode(GOTO_I, label1);
+                singleCode(LABEL_I, label3);
 			}
 		}
 }
@@ -525,7 +506,7 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
 
         Operand* label1 = newLabel();
         translate_Cond(node->child, label1, label_false);
-        createSingle(LABEL_I, label1);       
+        singleCode(LABEL_I, label1);       
         if(stmtCount == 8)
         {
             condCount++;
@@ -539,7 +520,7 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
 
         Operand* label1 = newLabel();
         translate_Cond(node->child, label_true, label1);
-        createSingle(LABEL_I, label1);
+        singleCode(LABEL_I, label1);
         translate_Cond(node->child->bro->bro, label_true, label_false);
     } 
     // Exp RELOP Exp
@@ -550,8 +531,8 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
         Operand* t2 = newTemp(VAL_O);
         translate_Exp(node->child, t1,0);
         translate_Exp(node->child->bro->bro, t2,0);
-        createCond(t1, t2, label_true, node->child->bro->s_val);
-        createSingle(GOTO_I, label_false);
+        condCode(t1, t2, label_true, node->child->bro->s_val);
+        singleCode(GOTO_I, label_false);
     } 
     // NOT Exp
     else if(node->child&&!strcmp("NOT",node->child->name))
@@ -563,9 +544,8 @@ void translate_Cond(treeNode* node, Operand* label_true, Operand* label_false)
     else {
         Operand* t1 = newTemp(VAL_O);
         translate_Exp(node, t1,0);
-
-        createCond(t1, newConstant(0), label_true, "!=");
-        createSingle(GOTO_I, label_false);
+        condCode(t1, newConstant(0), label_true, "!=");
+        singleCode(GOTO_I, label_false);
     } 
 }
 
@@ -583,7 +563,7 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                 Operand* op = (Operand*)malloc(sizeof(Operand));
                 op->kind = CONSTANT_O;
                 op->u.value = node->child->i_val;
-                createAssign(place, op,NORMAL_I);
+                assignCode(place, op,NORMAL_I);
             }
         }
     //Exp->FLOAT
@@ -626,9 +606,9 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                             Operand* t3 = newTemp(ADDRESS_O);
                             //不是函数参数时，需要先取一遍地址
                             if(t1->isfunctionpara==0)
-                                createAssign(t3,t1,GETADDR_I);
+                                assignCode(t3,t1,GETADDR_I);
                             else    
-                                createAssign(t3,t1,NORMAL_I);
+                                assignCode(t3,t1,NORMAL_I);
                             t2 = newTemp(ADDRESS_O);
                             Type* E2type = translate_Exp(E2,t2,0);
                             //数组COPY的过程
@@ -638,10 +618,10 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                     {
                         t2 = newTemp(VAL_O);
                         translate_Exp(E2,t2,0);
-                        createAssign(t1 , t2,NORMAL_I);
+                        assignCode(t1 , t2,NORMAL_I);
                     }
                     if (place) 
-                        createAssign( place, t1,NORMAL_I);
+                        assignCode( place, t1,NORMAL_I);
                 }
                 else if(E1->child&&!strcmp("Exp",E1->child->name))
                 {
@@ -664,12 +644,12 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                                 {
                                        Operand* t2 = newTemp(VAL_O);
                                         translate_Exp(E2,t2,0);
-                                        createAssign(t1,t2,SETVAL_I);
+                                        assignCode(t1,t2,SETVAL_I);
                                 }
                             }
                         if (place) 
                         {
-                            createAssign( place, t1,NORMAL_I);
+                            assignCode( place, t1,NORMAL_I);
                         }
 
                     }
@@ -691,10 +671,10 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                                 {
                                        Operand* t2 = newTemp(VAL_O);
                                         translate_Exp(E2,t2,0);
-                                        createAssign(t1,t2,SETVAL_I);
+                                        assignCode(t1,t2,SETVAL_I);
                                 }
                             if (place) 
-                                createAssign( place, t1,NORMAL_I);
+                                assignCode( place, t1,NORMAL_I);
                     }
                 }
             }
@@ -724,18 +704,18 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                     translate_Exp(node->child->bro->bro,t2,headType);
                     //计算当前维数的偏移量，等会儿再加上E1的地址即可
                     Operand* offset = newTemp(VAL_O);
-                    createBinop(MUL_I, offset, t2, newConstant(ElementSize));
+                    binCode(MUL_I, offset, t2, newConstant(ElementSize));
                     //渴望得到该处的值
                     if(place->type==VAL_O)
                     {
                         Operand* add = newTemp(ADDRESS_O);
-                        createBinop(ADD_I, add,t1,offset);
-                        createAssign(place, add,GETVAL_I);
+                        binCode(ADD_I, add,t1,offset);
+                        assignCode(place, add,GETVAL_I);
                     }
                     //渴望得到该处的地址
                     else
                     {
-                        createBinop(ADD_I, place,t1,offset);
+                        binCode(ADD_I, place,t1,offset);
                     }
                     return typeElement;
                 }
@@ -767,13 +747,13 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                             if(place->type==VAL_O)
                             {
                                 Operand* add = newTemp(ADDRESS_O);
-                                createBinop(ADD_I, add, t1, off);
-                                createAssign( place, add,GETVAL_I);
+                                binCode(ADD_I, add, t1, off);
+                                assignCode( place, add,GETVAL_I);
                             }
                             //渴望获取地址
                             else
                             {
-                                createBinop(ADD_I, place, t1, off);
+                                binCode(ADD_I, place, t1, off);
                             }                   
                             return returnType;          
                         }
@@ -790,15 +770,15 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                     Operand* label2 = newLabel();
                     if (place)
                         {
-                            createAssign(place, newConstant(0),NORMAL_I);
+                            assignCode(place, newConstant(0),NORMAL_I);
                         }
                     translate_Cond(node, label1, label2);
-                    createSingle(LABEL_I, label1);
+                    singleCode(LABEL_I, label1);
                     if (place)
                         {
-                            createAssign(place,newConstant(1),NORMAL_I);
+                            assignCode(place,newConstant(1),NORMAL_I);
                         }
-                    createSingle(LABEL_I, label2);
+                    singleCode(LABEL_I, label2);
                 }
                 else if(!strcmp("PLUS",node->child->bro->name)||!strcmp("MINUS",node->child->bro->name)||!strcmp("STAR",node->child->bro->name)||!strcmp("DIV",node->child->bro->name))
                 {
@@ -816,13 +796,13 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                         if (place)
                         {
                             if(!strcmp("PLUS",node->child->bro->name))
-                                createBinop(ADD_I, place, t1, t2);
+                                binCode(ADD_I, place, t1, t2);
                             if(!strcmp("MINUS",node->child->bro->name))
-                                createBinop(SUB_I, place, t1, t2);
+                                binCode(SUB_I, place, t1, t2);
                             if(!strcmp("STAR",node->child->bro->name))
-                                createBinop(MUL_I, place, t1, t2);
+                                binCode(MUL_I, place, t1, t2);
                             if(!strcmp("DIV",node->child->bro->name))
-                                createBinop(DIV_I, place, t1, t2);
+                                binCode(DIV_I, place, t1, t2);
                         }
                     }
             }
@@ -838,7 +818,7 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                 Operand* t1 = newTemp(VAL_O);
                 translate_Exp(node->child->bro, t1,0);
                 if (place)
-                    createBinop(SUB_I, place, newConstant(0), t1);
+                    binCode(SUB_I, place, newConstant(0), t1);
             }
         } 
     //EXP-> NOT EXP
@@ -850,16 +830,16 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                 Operand* label2 = newLabel();
                 if (place)
                     {
-                        createAssign(place, newConstant(0),NORMAL_I);
+                        assignCode(place, newConstant(0),NORMAL_I);
                     }                              
 
                 translate_Cond(node, label1, label2);
-                createSingle(LABEL_I, label1);
+                singleCode(LABEL_I, label1);
                 if (place)
                     {
-                        createAssign(place,newConstant(1),NORMAL_I);
+                        assignCode(place,newConstant(1),NORMAL_I);
                     }
-                createSingle(LABEL_I, label2);
+                singleCode(LABEL_I, label2);
 
         } 
     //EXP-> ID | ID LP RP | ID LP Args RP
@@ -877,20 +857,20 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                 if(place->type==VAL_O)
                 {
                     //既然希望得到一个值，那么必然只能为基本类型
-                    createAssign(place, symbol->op,NORMAL_I);
+                    assignCode(place, symbol->op,NORMAL_I);
                 }
                 else
                 {
                     //希望得到一个地址
                     if(symbol->op->type==VAL_O) //符号是基本类型
-                        createAssign(place, symbol->op,GETADDR_I);
+                        assignCode(place, symbol->op,GETADDR_I);
                     else    //符号是地址
                     {
                         //函数参数时，变量本身是地址
                         if(symbol->op->isfunctionpara==1)
-                            createAssign(place, symbol->op,NORMAL_I);
+                            assignCode(place, symbol->op,NORMAL_I);
                         else
-                            createAssign(place, symbol->op,GETADDR_I);
+                            assignCode(place, symbol->op,GETADDR_I);
                     }
                 }
                 return symbol->type;
@@ -908,38 +888,37 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
             translate_Args(node->child->bro->bro,arg_list,arg_count-1,func->type->u.function.para);
             if (!strcmp(func->name, "write")) 
             {
-                createSingle(WRITE_I, arg_list[0]);
+                singleCode(WRITE_I, arg_list[0]);
                 if (place)
-                    createAssign(place, newConstant(0),NORMAL_I);
+                    assignCode(place, newConstant(0),NORMAL_I);
             } 
             else {
                 for (int i = 0; i < arg_count; ++i) {
-                    createSingle(ARG_I, arg_list[i]);
+                    singleCode(ARG_I, arg_list[i]);
                 }
                 Operand* op = (Operand*)malloc(sizeof(Operand));
                 op->kind = FUNCTION_O;
                 op->u.func_name = func->name;
                 if (place)
-                    createSinop(CALL_I, place, op);
+                    unaryCode(CALL_I, place, op);
                 else {
                     Operand* t1 = newTemp(VAL_O);
-                    createSinop(CALL_I, t1, op);
+                    unaryCode(CALL_I, t1, op);
                 }
             }
         }
     //EXP-> ID LP RP
     else
         {
-                        
             hashNode* func = search(node->child->s_val);
             if(!strcmp(func->name,"read"))
             {
                 if (place)
-                        createSingle(READ_I, place);
+                        singleCode(READ_I, place);
                 else 
                 {
                     Operand* t1 = newTemp(VAL_O);
-                    createSingle(READ_I, t1);
+                    singleCode(READ_I, t1);
                 }
             }
             else
@@ -948,10 +927,10 @@ Type* translate_Exp(treeNode* node,Operand* place,int headType)
                 op->kind = FUNCTION_O;
                 op->u.func_name = func->name;
                 if (place)
-                    createSinop(CALL_I, place, op);
+                    unaryCode(CALL_I, place, op);
                 else {
                     Operand* t1 = newTemp(VAL_O);
-                    createSinop(CALL_I, t1, op);
+                    unaryCode(CALL_I, t1, op);
                 }
             }
         }
@@ -998,7 +977,7 @@ void translate_FunDec(treeNode* node)
     Operand* func = (Operand*)malloc(sizeof(Operand));
     func->kind = FUNCTION_O;
     func->u.func_name = node->child->s_val;
-    createSingle(FUNCTION_I, func);
+    singleCode(FUNCTION_I, func);
     //FunDec -> ID LP VarList RP
     if(!strcmp( "VarList",node->child->bro->bro->name))   
     {
@@ -1070,17 +1049,17 @@ void translate_VarDec(treeNode* node,int headType)
             if (headType==1) 
             {
                 sym->op->kind = PARAMETER_O;
-                createSingle(PARAM_I, sym->op);
+                singleCode(PARAM_I, sym->op);
             }
             //结构体
             else if(headType==2)
             {
-                createDec(sym->op, sym->size);
+                decCode(sym->op, sym->size);
             }
             else
             {
                 if(sym->type->kind==ARRAY)
-                    createDec(sym->op, sym->size);
+                    decCode(sym->op, sym->size);
             }
         }
         //VarDec -> VarDec LP INT RP
@@ -1181,7 +1160,7 @@ void  translate_Dec(treeNode *node,int headType)
         translate_VarDec(node->child,headType);
         Operand* t2 = newTemp(VAL_O);
         translate_Exp(node->child->bro->bro, t2,0);
-        createAssign(t1, t2,NORMAL_I);
+        assignCode(t1, t2,NORMAL_I);
         }
     }
 }

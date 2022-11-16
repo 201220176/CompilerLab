@@ -52,17 +52,17 @@ typedef struct hashNode{
 
 
 void tableInit();
-unsigned hash_pjw(const char* name);
+unsigned hash_pjw(char* name);
 void printTable();
-Type* getTypeFromTable(const char * name);
-Type* getTypeFromStruct(const char * name,Type* structure);
+Type* getTypeFromTable( char * name);
+Type* getTypeFromStruct( char * name,Type* structure);
 void DeleteInTable(hashNode* node);
 void removeNodes(int depth);
 void insert(hashNode* node);
-hashNode* search(const char * name);
-hashNode* newSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara);
-void addSymbol(const char* name, Type* type, int line, int defined,int depth,int isfunpara);
-int isDoInStructure(const char* domain,Type*structure);
+hashNode* search( char * name);
+hashNode* newSymbol( char* name, Type* type, int line, int defined,int depth,int isfunpara);
+void addSymbol( char* name, Type* type, int line, int defined,int depth,int isfunpara);
+int isDoInStructure( char* domain,Type*structure);
 void checkDeclarationAndDefine();
 void Program(treeNode* node);
 void ExtDefList(treeNode* node);
@@ -85,7 +85,7 @@ void DecList(treeNode *node, Type* type,Type * headType,  int defined,int depth)
 void Dec(treeNode *node, Type* type, Type* headType, int defined,int depth) ;
 int BeSameType(Type* Ltype,Type*Rtype);
 int checkDeclaration(Type* Ltype,Type*Rtype);
-int checkOperator(Type* Ltype,Type*Rtype,const char* operator);
+int checkOperator(Type* Ltype,Type*Rtype, char* operator);
 void serror(int errorType,int line,char* msg);
 int getTypeSize(Type* typeElement);
 

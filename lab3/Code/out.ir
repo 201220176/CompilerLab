@@ -1,140 +1,28 @@
-FUNCTION add :
-PARAM v2
-PARAM v3
-DEC v4 400
-t2 := &v4
-t3 := #0
-t4 := t3 * #40
-t1 := t2 + t4
-t5 := v3
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-*t1 := *t5
-t5 := t5 + #4
-t1 := t1 + #4
-t7 := v2
-t10 := &v4
-t11 := #0
-t12 := t11 * #40
-t9 := t10 + t12
-t13 := #3
-t14 := t13 * #4
-t15 := t9 + t14
-t8 := *t15
-t6 := t7 + t8
-RETURN t6
-FUNCTION add2 :
-PARAM v5
-PARAM v6
-t19 := v5
-t18 := t19 + #0
-t20 := #2
-t21 := t20 * #4
-t22 := t18 + t21
-t17 := *t22
-t26 := v6
-t25 := t26 + #40
-t27 := #0
-t28 := t27 * #40
-t24 := t25 + t28
-t29 := #3
-t30 := t29 * #4
-t31 := t24 + t30
-t23 := *t31
-t16 := t17 + t23
-RETURN t16
 FUNCTION main :
-DEC v7 200
-DEC v8 4400
-t34 := &v7
-t35 := #2
-t36 := t35 * #20
-t33 := t34 + t36
-t37 := #0
-t38 := t37 * #4
-t32 := t33 + t38
-t39 := #2
-*t32 := t39
-t42 := &v7
-t43 := #3
-t44 := t43 * #20
-t41 := t42 + t44
-t45 := #1
-t46 := t45 * #4
-t40 := t41 + t46
-t47 := #3
-*t40 := t47
-t51 := &v8
-t52 := #0
-t53 := t52 * #440
-t50 := t51 + t53
-t49 := t50 + #0
-t54 := #2
-t55 := t54 * #4
-t48 := t49 + t55
-t58 := &v7
-t59 := #2
-t60 := t59 * #20
-t57 := t58 + t60
-t61 := #0
-t62 := t61 * #4
-t63 := t57 + t62
-t56 := *t63
-*t48 := t56
-t68 := &v8
-t69 := #1
-t70 := t69 * #440
-t67 := t68 + t70
-t66 := t67 + #40
-t71 := #0
-t72 := t71 * #40
-t65 := t66 + t72
-t73 := #3
-t74 := t73 * #4
-t64 := t65 + t74
-t77 := &v7
-t78 := #3
-t79 := t78 * #20
-t76 := t77 + t79
-t80 := #1
-t81 := t80 * #4
-t82 := t76 + t81
-t75 := *t82
-*t64 := t75
-t85 := &v8
-t86 := #0
-t87 := t86 * #440
-t84 := t85 + t87
-t89 := &v8
-t90 := #1
-t91 := t90 * #440
-t88 := t89 + t91
-ARG t88
-ARG t84
-t83 := CALL add2
-WRITE t83
+READ t1
+v2 := t1
+t2 := v2
+t3 := #0
+IF t2 > t3 GOTO label1
+GOTO label2
+LABEL label1 :
+t4 := #1
+WRITE t4
+GOTO label3
+LABEL label2 :
+t5 := v2
+t6 := #0
+IF t5 < t6 GOTO label4
+GOTO label5
+LABEL label4 :
+t8 := #1
+t7 := #0 - t8
+WRITE t7
+GOTO label6
+LABEL label5 :
+t9 := #0
+WRITE t9
+LABEL label6 :
+LABEL label3 :
+t10 := v2
+RETURN t10
